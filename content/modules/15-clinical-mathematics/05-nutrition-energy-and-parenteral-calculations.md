@@ -13,6 +13,17 @@ These are arithmetic questions sitting on top of physiology. This chapter gives 
 
 This chapter uses concentration arithmetic from [units, concentrations and conversions](../../clinical-mathematics/units-concentrations-and-conversions/), the different body weights from [weight and body-size based dosing](../../clinical-mathematics/weight-and-body-size-based-dosing/), and the maintenance-fluid ideas of [Holliday–Segar](../../clinical-mathematics/maintenance-fluids-holliday-segar/).
 
+> [!NOTE]
+> **Caring for infants?** The next chapter, [Infant & Neonatal Nutrition Calculations](../../clinical-mathematics/infant-and-neonatal-nutrition/), covers the infant-specific calculations in detail:
+> - feed volumes per feed
+> - milk energy and protein
+> - building a neonatal PN regimen (lipid first, then the aqueous volume)
+> - the switch from PN to enteral feeds
+> - GIR adjustments for hypoglycaemia
+> - fortified breast milk and catch-up growth
+> - the effect of fluid restriction on nutrition
+> - exponential growth velocity
+
 ## Key ideas
 
 ### Energy: what an equation predicts
