@@ -34,16 +34,18 @@ instead of doing arithmetic in their heads, and every answer shows its working, 
 
 ```bash
 /plugin marketplace add tristanseltec/quantome
+/plugin install quantome-math@quantome       # learners & agents: exact solve-and-verify, Data Sufficiency proofs, GMAT tutor
 /plugin install quantome-clinical@quantome   # professionals: fluids, dosing, renal, GIR/infant nutrition, BMI z-scores (preview)
 /plugin install quantome-author@quantome     # contributors: write chapters, verify code outputs, check citations
 ```
 
 | Plugin | Skills | Agents |
 |---|---|---|
+| [**quantome-math**](plugins/quantome-math/) | `solve-and-verify` · `data-sufficiency` · `gmat-tutor` · `practice-generator` | `answer-verifier` |
 | [**quantome-clinical**](plugins/quantome-clinical/) *(preview, professional-facing)* | `iv-fluids` · `dose-calculation` · `nutrition-calculations` · `paediatric-growth` | `clinical-calc-checker` |
 | [**quantome-author**](plugins/quantome-author/) | `write-chapter` · `verify-chapter` · `check-citations` | `fact-checker` · `clinical-reviewer` |
 
-More collections (statistics, genomics, AI-for-biomedicine, maths, tutoring) are on the [roadmap](docs/VISION.md#skill-collections-claude-code-plugin-marketplace).
+More collections (statistics, genomics, AI-for-biomedicine) are on the [roadmap](docs/VISION.md#skill-collections-claude-code-plugin-marketplace).
 
 ## What's inside
 

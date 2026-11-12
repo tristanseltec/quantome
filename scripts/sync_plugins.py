@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "py" / "src" / "quantome"
-TARGETS = [ROOT / "plugins" / "quantome-clinical" / "lib" / "quantome"]
+TARGETS = [ROOT / "plugins" / name / "lib" / "quantome" for name in ("quantome-clinical", "quantome-math")]
 IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc")
 
 

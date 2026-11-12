@@ -42,3 +42,4 @@ plugins-check:
     claude plugin validate --strict .
     claude plugin validate --strict plugins/quantome-clinical
     claude plugin validate --strict plugins/quantome-author
+    claude plugin validate --strict plugins/quantome-math

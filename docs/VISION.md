@@ -61,6 +61,7 @@ MCAT/USMLE quantitative reasoning.
 
 ```bash
 /plugin marketplace add tristanseltec/quantome
+/plugin install quantome-math@quantome
 /plugin install quantome-clinical@quantome
 /plugin install quantome-author@quantome
 ```
@@ -72,8 +73,8 @@ MCAT/USMLE quantitative reasoning.
 | quantome-stats | planned | test selection, power and sample size, diagnostic accuracy, survival, meta-analysis |
 | quantome-genomics | planned | VCF QC, Hardy–Weinberg, polygenic risk scores, GWAS summary-statistics harmonisation |
 | quantome-ai-bio | planned | architecture designer (shapes and parameters), evaluation audit, TRIPOD+AI checklist |
-| quantome-math | planned | derive-and-verify with symbolic and numeric checks, numerical methods |
-| quantome-learn | planned | Socratic tutor grounded in the book, practice generator with code-checked answers |
+| **quantome-math** | 0.1 | exact solve-and-verify, answer-choice checking, Data Sufficiency counterexample proofs, GMAT tutor, verified practice generator |
+| quantome-learn | planned | tutors for the other parts (biomedical AI, clinical maths), spaced-repetition review |
 
 Skills use the open Agent Skills format, so other agents can use them. A Quantome MCP server exposing the same
 calculators is planned.

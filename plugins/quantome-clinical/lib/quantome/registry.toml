@@ -144,3 +144,77 @@ caveats = [
   "Severe obesity is classified by % of the 95th centile, not by z-score.",
   "Plot serial measurements; a single value is a screening result, not a diagnosis.",
 ]
+
+# ---------------- Mathematics toolkit (quantome-math) ----------------
+
+[formula."math.exact.evaluate"]
+title = "Safe exact expression evaluation (rational arithmetic)"
+level = "L1"
+reviewers = []
+chapter = "arithmetic/fractions-decimals-percents"
+sources = ["Python fractions.Fraction exact rational arithmetic; AST allow-list evaluator (no eval)."]
+caveats = ["Irrational results are floating-point approximations and are marked ≈."]
+
+[formula."math.numbers.factorization"]
+title = "Prime factorisation and divisor counting"
+level = "L1"
+reviewers = []
+chapter = "arithmetic/divisibility-primes-and-factors"
+sources = ["Fundamental theorem of arithmetic; τ(n) = Π(e_i + 1)."]
+caveats = []
+
+[formula."math.numbers.legendre"]
+title = "Exponent of a prime in n! (Legendre's formula)"
+level = "L1"
+reviewers = []
+chapter = "arithmetic/divisibility-primes-and-factors"
+sources = ["Legendre AM. Essai sur la théorie des nombres (1798); v_p(n!) = Σ ⌊n/p^k⌋."]
+caveats = []
+
+[formula."math.numbers.cyclicity"]
+title = "Units digits of powers (cyclicity) and modular powers"
+level = "L1"
+reviewers = []
+chapter = "arithmetic/remainders-and-units-digits"
+sources = ["Modular arithmetic; units digits of b^n repeat with period dividing 4."]
+caveats = []
+
+[formula."math.algebra.linear_systems"]
+title = "Exact linear systems with solution classification and combination tests"
+level = "L1"
+reviewers = []
+chapter = "algebra/linear-equations"
+sources = ["Gauss–Jordan elimination over the rationals; a combination is determined iff it lies in the row space (rank test)."]
+caveats = []
+
+[formula."math.algebra.quadratic"]
+title = "Quadratic equations: discriminant, exact roots, Vieta's formulas"
+level = "L1"
+reviewers = []
+chapter = "algebra/quadratics-and-polynomials"
+sources = ["Quadratic formula; Vieta: sum = −b/a, product = c/a."]
+caveats = []
+
+[formula."math.counting"]
+title = "Combinations, permutations, circular and multiset arrangements"
+level = "L1"
+reviewers = []
+chapter = "statistics-and-counting/counting-and-probability"
+sources = ["Standard combinatorics: C(n,k), P(n,k), (n−1)!, n!/(n1!·n2!·…)."]
+caveats = []
+
+[formula."math.stats.describe"]
+title = "Descriptive statistics (exact mean, median, mode, range, SD)"
+level = "L1"
+reviewers = []
+chapter = "statistics-and-counting/descriptive-statistics"
+sources = ["Population SD = √(Σ(x−μ)²/n); sample SD uses n−1."]
+caveats = ["GMAT questions use the population SD unless stated otherwise."]
+
+[formula."math.ds.counterexample_search"]
+title = "Data Sufficiency counterexample search"
+level = "L1"
+reviewers = []
+chapter = "data-sufficiency/the-data-sufficiency-method"
+sources = ["Exhaustive search over a finite domain: a counterexample proves insufficiency; its absence is evidence only."]
+caveats = ["'SUFFICIENT?' verdicts must be confirmed algebraically over the full domain the question allows."]

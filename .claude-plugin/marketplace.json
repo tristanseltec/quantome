@@ -11,18 +11,41 @@
   },
   "plugins": [
     {
+      "name": "quantome-math",
+      "source": "./plugins/quantome-math",
+      "description": "Exact, verifiable maths skills: solve-and-verify with answer-choice checking, Data Sufficiency with counterexample proofs, a Socratic GMAT tutor, and a machine-verified practice generator.",
+      "category": "education",
+      "keywords": [
+        "mathematics",
+        "gmat",
+        "tutoring",
+        "data-sufficiency",
+        "verification"
+      ]
+    },
+    {
       "name": "quantome-clinical",
       "source": "./plugins/quantome-clinical",
       "description": "Preview: verified clinical calculations for healthcare professionals (IV fluids, dosing, renal function, GIR and infant nutrition, paediatric BMI z-scores). Tested code, with working and sources shown.",
       "category": "health",
-      "keywords": ["clinical", "dosing", "iv-fluids", "nutrition", "paediatrics"]
+      "keywords": [
+        "clinical",
+        "dosing",
+        "iv-fluids",
+        "nutrition",
+        "paediatrics"
+      ]
     },
     {
       "name": "quantome-author",
       "source": "./plugins/quantome-author",
       "description": "Contributor toolkit for the Quantome textbook: house-style chapter writing, code-output verification, citation checking, and independent fact-checking and clinical review agents.",
       "category": "productivity",
-      "keywords": ["authoring", "verification", "open-educational-resources"]
+      "keywords": [
+        "authoring",
+        "verification",
+        "open-educational-resources"
+      ]
     }
   ]
 }

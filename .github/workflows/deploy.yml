@@ -52,6 +52,8 @@ jobs:
         run: |
           python -I plugins/quantome-clinical/skills/iv-fluids/scripts/qcalc.py fluids --weight 25
           python -I plugins/quantome-clinical/skills/paediatric-growth/scripts/qcalc.py --json bmi-z --sex F --age-months 120 --weight 40 --height-cm 140
+          python -I plugins/quantome-math/skills/solve-and-verify/scripts/qmath.py choices --answer "comb(5,2)/comb(8,2)" --choices "A=5/14,B=3/8,C=1/4,D=5/28,E=2/7"
+          python -I plugins/quantome-math/skills/data-sufficiency/scripts/qmath.py ds --question "x > 0" --s1 "x**2 == 9" --s2 "x**3 == 27" --domain "x=int:-20..20"
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -61,6 +63,7 @@ jobs:
           claude plugin validate --strict .
           claude plugin validate --strict plugins/quantome-clinical
           claude plugin validate --strict plugins/quantome-author
+          claude plugin validate --strict plugins/quantome-math
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
