@@ -22,16 +22,26 @@ description: Solve and explain GMAT Data Sufficiency questions (answer choices A
 1. **Rephrase the question.** Simplify it: "Is x² > x?" becomes "Is x > 1 or x < 0?". Note what the stem
    guarantees, e.g. "n is a positive integer".
 2. **Analyse (1) alone**, then **(2) alone, forgetting (1)**, then both together only if needed (AD/BCE grid).
-3. **Prove insufficiency by counterexample, using the tool:**
+3. **Prove insufficiency by counterexample, using the tool** (`scripts/qmath.py` in *this skill's directory*; in a
+   clone of the Quantome repository you can also run `PYTHONPATH=py/src python3 -m quantome.mathcli`):
    ```bash
    python3 scripts/qmath.py ds --question "<value expr or yes/no condition>" \
        --s1 "<statement 1 as a condition>" --s2 "<statement 2>" \
-       --domain "x=int:-30..30" [--domain "y=..."] [--given "<stem constraint>"]
+       --domain "x=int:-30..30" [--domain "y=..."] [--given "<stem constraint>"] [--define "S = k*a + k*(k-1)/2"]
    ```
    - Domains: `int:a..b`, `posint:1..b`, `grid:a..b/4` (multiples of 1/4, to test fractions), `set:2,3,5,7`.
    - **Choose domains that respect the stem.** If the stem doesn't say "integer", also run a `grid` domain:
      fractions and negatives are the most common hidden counterexamples.
    - Conditions use `==`, `<`, `and`, `or`, `not`, and `is_int`, `is_even`, `is_odd`, `is_prime`, `is_square`, `abs`.
+   - `--define` creates derived quantities (sums, averages, "Neither = Total − A − B + Both") from the domain variables,
+     which also keeps the search small. The search is capped at 2,000,000 points.
+   - Statistics helpers: `mean(a,b,c)`, `median(a,b,c)`, `total(...)`, `spread(...)` (range), `distinct(...)`;
+     inequality: `!=`.
+   - The tool **fails loudly** if any expression uses an undefined name. If a statement is never true, or the two
+     statements contradict each other, it answers `undetermined` with a warning, never a silent E. Fix the
+     translation before going on.
+   - **Thresholds:** a `grid` only tests multiples of its step. If a statement has a boundary such as `r > 0.07`,
+     re-run with a finer step around it (e.g. `grid:0.06..0.08/10000`) before trusting SUFFICIENT?.
 4. **Interpret the result honestly:**
    - `INSUFFICIENT (proved by counterexample)`: quote the two cases. This is a proof.
    - `SUFFICIENT? (no counterexample found)`: this is only **evidence**. Give the **algebraic argument** that

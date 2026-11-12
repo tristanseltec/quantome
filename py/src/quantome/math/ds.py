@@ -12,7 +12,7 @@ from __future__ import annotations
 import itertools
 from fractions import Fraction
 
-from .exact import MathError, evaluate, fmt, parse
+from .exact import MathError, evaluate, fmt, parse, require_names
 
 MAX_POINTS = 2_000_000
 
@@ -47,24 +47,50 @@ def parse_domain(spec: str) -> tuple[str, list[Fraction]]:
 
 
 def test(question: str, statements: dict[str, str], domains: list[str],
-         constraints: list[str] | None = None, max_examples: int = 3) -> dict:
-    """Evaluate sufficiency of (1), (2) and (1)+(2) for a value or yes/no question."""
+         constraints: list[str] | None = None, max_examples: int = 3,
+         defines: list[str] | None = None) -> dict:
+    """Evaluate sufficiency of (1), (2) and (1)+(2) for a value or yes/no question.
+
+    ``defines`` are derived variables, e.g. ``"S = k*a + k*(k-1)/2"``, computed in order for every assignment.
+    Every name used anywhere must be a domain variable or a define: anything else raises MathError.
+    """
     doms = [parse_domain(d) for d in domains]
     names = [n for n, _ in doms]
+    if len(set(names)) != len(names):
+        raise MathError("a variable has two domains")
+    known = set(names)
+    derived = []
+    for d in defines or []:
+        if "=" not in d:
+            raise MathError(f"define must look like 'S = expression', got {d!r}")
+        dname, dexpr = (t.strip() for t in d.split("=", 1))
+        if not dname.isidentifier() or dname in known:
+            raise MathError(f"bad or duplicate define name {dname!r}")
+        tree = parse(dexpr)
+        require_names(tree, known, f"define {dname}")
+        derived.append((dname, tree))
+        known.add(dname)
     size = 1
     for _, vals in doms:
         size *= len(vals)
     if size > MAX_POINTS:
         raise MathError(f"search space {size:,} points > {MAX_POINTS:,}; narrow the domains")
     q = parse(question)
+    require_names(q, known, "question")
     stmts = {k: parse(v) for k, v in statements.items()}
+    for k, t in stmts.items():
+        require_names(t, known, f"statement ({k})")
     cons = [parse(c) for c in (constraints or [])]
+    for c in cons:
+        require_names(c, known, "given")
 
     answers: dict[str, dict] = {"1": {}, "2": {}, "1+2": {}}
     admissible = 0
     for combo in itertools.product(*(v for _, v in doms)):
         env = dict(zip(names, combo))
         try:
+            for dname, tree in derived:
+                env[dname] = evaluate(tree, env)
             if not all(evaluate(c, env) for c in cons):
                 continue
             ok1 = bool(evaluate(stmts["1"], env))
@@ -79,6 +105,9 @@ def test(question: str, statements: dict[str, str], domains: list[str],
                 bucket = answers[label]
                 if key not in bucket and len(bucket) < 50:
                     bucket[key] = env
+    if admissible == 0:
+        raise MathError("no admissible assignment at all: the stem constraints contradict the domains "
+                        "(or every case is undefined). Check --given and --domain.")
     verdict = {}
     for label, bucket in answers.items():
         if not bucket:
@@ -96,7 +125,20 @@ def test(question: str, statements: dict[str, str], domains: list[str],
     def suff(lbl):
         return verdict[lbl]["status"].startswith("SUFFICIENT")
 
-    if suff("1") and suff("2"):
+    warnings = []
+    for lbl in ("1", "2"):
+        if verdict[lbl]["status"].startswith("no admissible"):
+            warnings.append(f"Statement ({lbl}) is never true in the searched domain: real DS statements are "
+                            "always possible, so check the statement and the domain.")
+    if verdict["1+2"]["status"].startswith("no admissible") and not warnings:
+        warnings.append("Statements (1) and (2) are never true together: GMAT statements never contradict each "
+                        "other, so the question or the domain is wrong.")
+    if any(":grid:" in d.replace(" ", "") or "=grid:" in d.replace(" ", "") for d in domains):
+        warnings.append("Grid domains only test multiples of the step: a threshold between grid points can hide a "
+                        "counterexample. Re-run with a finer step near any boundary in the statements.")
+    if warnings and any(w.startswith("Statement") for w in warnings):
+        letter = "undetermined (see warnings)"
+    elif suff("1") and suff("2"):
         letter = "D"
     elif suff("1"):
         letter = "A"
@@ -106,10 +148,12 @@ def test(question: str, statements: dict[str, str], domains: list[str],
         letter = "C"
     else:
         letter = "E"
+    if verdict["1+2"]["status"].startswith("no admissible"):
+        letter = "undetermined (see warnings)"
     return {
         "question": question, "statements": statements, "domains": domains, "constraints": constraints or [],
         "points_searched": size, "admissible_points": admissible,
-        "verdicts": verdict, "suggested_answer": letter,
+        "verdicts": verdict, "suggested_answer": letter, "warnings": warnings,
         "caveat": ("INSUFFICIENT verdicts are proved by the counterexamples shown. SUFFICIENT? verdicts only mean no "
                    "counterexample exists in the searched domain: confirm them algebraically, and widen the domain "
                    "(negatives, fractions, larger values) whenever the question allows it."),

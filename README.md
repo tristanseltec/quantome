@@ -4,7 +4,7 @@
 
 **Open mathematics from GMAT quant to genomics, AI and the bedside.**
 
-A free, modular, open-source textbook: 58 chapters, 118 runnable Python examples, 41 architecture diagrams and 256 practice problems with worked answers.
+A free, modular, open-source textbook: 71 chapters (~250,000 words), 119 runnable Python examples, 43 architecture diagrams and 500+ practice problems with worked, machine-verified answers.
 Built by human researchers and AI agents, and published as a fast static website made with Rust + Leptos.
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
@@ -51,7 +51,7 @@ More collections (statistics, genomics, AI-for-biomedicine) are on the [roadmap]
 
 | Part | Modules | You will be able to… |
 |---|---|---|
-| **I · GMAT Quantitative Reasoning** | Getting Started · Arithmetic · Algebra · Word Problems · Statistics & Counting · Data Sufficiency | score well on GMAT Focus Quant and Data Sufficiency |
+| **I · GMAT Quantitative Reasoning** | Getting Started · Arithmetic · Algebra · Word Problems · Statistics & Counting · Data Sufficiency (27 chapters, ~280 practice problems incl. a timed 20-question DS set) | score well on GMAT Focus Quant and Data Sufficiency, with strategies, traps and difficulty-tagged practice |
 | **II · Mathematics for Biomedical AI** | Linear Algebra · Calculus & Optimization · Probability & Statistics | read the equations in an ML paper: tensor shapes, backprop, likelihoods, Bayes, multiple testing |
 | **III · Genomics & Bioinformatics** | Genomics Foundations · Bioinformatics Algorithms | go from FASTQ to VCF to features; build GWAS and polygenic risk scores; implement alignment, BWT/FM-index and HMMs |
 | **IV · Machine Learning & Deep Learning** | Classical ML · Neural Networks · Deep Architectures for Sequences | build models from logistic regression to transformers and DNA foundation models (DNABERT, Enformer, HyenaDNA, Evo), and evaluate them honestly |

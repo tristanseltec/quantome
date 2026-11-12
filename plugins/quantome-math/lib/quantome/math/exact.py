@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 import math
+import re
 import operator
 from fractions import Fraction
 from typing import Any, Mapping
@@ -104,7 +105,27 @@ def _bool_int(pred):
     return wrapped
 
 
+def _flat(args) -> list:
+    """median(a, b, c) and median((a, b, c)) both work."""
+    if len(args) == 1 and isinstance(args[0], tuple):
+        args = args[0]
+    if not args:
+        raise MathError("needs at least one value")
+    return list(args)
+
+
+def _median(*args):
+    xs = sorted(_flat(args))
+    n = len(xs)
+    return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+
 FUNCTIONS: dict[str, Any] = {
+    "mean": lambda *a: sum(_flat(a)) / len(_flat(a)),
+    "median": _median,
+    "total": lambda *a: sum(_flat(a)),
+    "spread": lambda *a: max(_flat(a)) - min(_flat(a)),
+    "distinct": lambda *a: len(set(_flat(a))) == len(_flat(a)),
     "sqrt": exact_sqrt,
     "abs": abs,
     "min": min,
@@ -133,9 +154,35 @@ _CMP = {
 }
 
 
+_IMPLICIT_MUL = [
+    # 2x, 3(x+1), 2sqrt(5): digit IMMEDIATELY followed by a letter or "(" (not 1e5; never across spaces,
+    # so keywords like "0 and y" are untouched). Variables must still be separated: write 5*x*y, not 5xy.
+    (re.compile(r"(?<![A-Za-z_\d.])(\d+(?:\.\d+)?)(?=(?:[A-Za-df-zA-Z_(]|e(?![+-]?\d)))"), r"\1*"),
+    # (x+1)(x-1), (x+1)y, (x+1)2: closing bracket immediately followed by a term
+    (re.compile(r"\)(?=[A-Za-z_\d(])"), ")*"),
+]
+
+
 def _normalise(src: str) -> str:
-    return (src.replace("^", "**").replace("×", "*").replace("÷", "/").replace("−", "-")
-               .replace("≤", "<=").replace("≥", ">=").replace("≠", "!="))
+    s = (src.replace("^", "**").replace("×", "*").replace("÷", "/").replace("−", "-")
+            .replace("≤", "<=").replace("≥", ">=").replace("≠", "!=").replace("·", "*"))
+    for pat, rep in _IMPLICIT_MUL:
+        s = pat.sub(rep, s)
+    return s
+
+
+def free_names(tree: ast.AST) -> set[str]:
+    """Variable names an expression uses (excluding known functions and constants)."""
+    return {n.id for n in ast.walk(tree)
+            if isinstance(n, ast.Name) and n.id not in FUNCTIONS and n.id not in ("pi", "True", "False")}
+
+
+def require_names(tree: ast.AST, allowed: set[str], where: str) -> None:
+    """Fail loudly if an expression uses a variable that has no value or domain."""
+    unknown = free_names(tree) - set(allowed)
+    if unknown:
+        raise MathError(f"{where}: unknown name(s) {', '.join(sorted(unknown))}; "
+                        f"defined: {', '.join(sorted(allowed)) or 'none'}")
 
 
 def parse(src: str) -> ast.Expression:

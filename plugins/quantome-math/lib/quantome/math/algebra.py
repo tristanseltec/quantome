@@ -205,11 +205,22 @@ def _simplify_surd(D: Fraction) -> tuple[Fraction, int]:
 
 # ---------- sequences ----------
 
-def arithmetic_sequence(first: str, diff: str, n: int) -> dict:
+def arithmetic_sequence(first: str, diff: str, n: int | None = None, last: str | None = None) -> dict:
+    """Give n, or the last term (then n = (last − first)/d + 1, which must be a whole number)."""
     a, d = Fraction(evaluate(first)), Fraction(evaluate(diff))
-    last = a + (n - 1) * d
-    return {"a1": fmt(a), "d": fmt(d), "n": n, "nth_term": fmt(last),
-            "sum": fmt(n * (a + last) / 2), "working": f"a_n = a1 + (n−1)d; S_n = n × (a1 + a_n)/2"}
+    if n is None:
+        if last is None:
+            raise MathError("give --n or --last")
+        if d == 0:
+            raise MathError("d = 0: the number of terms is not determined by the last term")
+        count = (Fraction(evaluate(last)) - a) / d + 1
+        if count.denominator != 1 or count < 1:
+            raise MathError(f"last term is not in the sequence ((last − first)/d + 1 = {fmt(count)})")
+        n = int(count)
+    end = a + (n - 1) * d
+    return {"a1": fmt(a), "d": fmt(d), "n": n, "nth_term": fmt(end), "sum": fmt(n * (a + end) / 2),
+            "first_terms": [fmt(a + i * d) for i in range(min(n, 12))],
+            "working": "a_n = a1 + (n−1)d; n = (last − first)/d + 1; S_n = n × (a1 + a_n)/2"}
 
 
 def geometric_sequence(first: str, ratio: str, n: int) -> dict:
@@ -217,7 +228,30 @@ def geometric_sequence(first: str, ratio: str, n: int) -> dict:
     nth = a * r ** (n - 1)
     s = a * n if r == 1 else a * (1 - r**n) / (1 - r)
     return {"a1": fmt(a), "r": fmt(r), "n": n, "nth_term": fmt(nth), "sum": fmt(s),
+            "first_terms": [fmt(a * r**i) for i in range(min(n, 12))],
             "working": "a_n = a1·r^(n−1); S_n = a1(1 − r^n)/(1 − r)"}
+
+
+def recurrence(initial: list[str], rule: str, n: int) -> dict:
+    """Terms of a recursive sequence. In the rule, `prev` = a(n−1), `prev2` = a(n−2), `n` = index (1-based)."""
+    from .exact import require_names
+    if not 1 <= n <= 500:
+        raise MathError("n must be between 1 and 500")
+    terms = [Fraction(evaluate(x)) for x in initial]
+    if not terms:
+        raise MathError("give at least one initial term")
+    tree = parse(rule)
+    require_names(tree, {"prev", "prev2", "n"}, "rule")
+    while len(terms) < n:
+        k = len(terms) + 1
+        env = {"prev": terms[-1], "n": Fraction(k)}
+        if len(terms) >= 2:
+            env["prev2"] = terms[-2]
+        elif "prev2" in rule:
+            raise MathError("the rule uses prev2: give two initial terms")
+        terms.append(Fraction(evaluate(tree, env)))
+    return {"rule": f"a(n) = {rule}", "terms": [fmt(t) for t in terms[:n]], "nth_term": fmt(terms[n - 1]),
+            "sum_first_n": fmt(sum(terms[:n], Fraction(0)))}
 
 
 # ---------- counting ----------
@@ -267,4 +301,4 @@ def describe(values: list[str]) -> dict:
 
 
 __all__ = ["solve_linear", "combination_determined", "quadratic", "arithmetic_sequence",
-           "geometric_sequence", "count", "describe", "parse"]
+           "geometric_sequence", "recurrence", "count", "describe", "parse"]

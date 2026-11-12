@@ -103,3 +103,53 @@ def gcd_lcm(nums: list[int]) -> dict:
 
 def _is_prime(n: int) -> bool:
     return n >= 2 and all(n % d for d in range(2, math.isqrt(n) + 1))
+
+
+def valuation(value, p: int) -> dict:
+    """Exponent of prime p in a positive integer (any exact expression, e.g. factorial(50)/factorial(25))."""
+    from fractions import Fraction
+    if not _is_prime(p):
+        raise ValueError("p must be prime")
+    v = Fraction(value)
+    if v.denominator != 1 or v <= 0:
+        raise ValueError("value must be a positive integer")
+    n, k = int(v), 0
+    while n % p == 0:
+        n //= p
+        k += 1
+    return {"p": p, "exponent": k}
+
+
+def decimal_expansion(num: int, den: int, digit: int | None = None) -> dict:
+    """Terminating test, repeating block and nth digit after the decimal point of num/den."""
+    if den == 0:
+        raise ValueError("denominator is zero")
+    from fractions import Fraction
+    f = Fraction(num, den)
+    n, d = abs(f.numerator), f.denominator
+    core = d
+    for q in (2, 5):
+        while core % q == 0:
+            core //= q
+    integer, rem = divmod(n, d)
+    seen, digits = {}, []
+    while rem and rem not in seen and len(digits) < 2000:
+        seen[rem] = len(digits)
+        rem *= 10
+        digits.append(rem // d)
+        rem %= d
+    if rem == 0:
+        expansion = f"{integer}." + "".join(map(str, digits)) if digits else str(integer)
+        out = {"fraction": f"{f.numerator}/{f.denominator}", "terminating": True, "decimal": ("-" if f < 0 else "") + expansion}
+    else:
+        start = seen.get(rem, len(digits))
+        pre, rep = digits[:start], digits[start:]
+        out = {"fraction": f"{f.numerator}/{f.denominator}", "terminating": False,
+               "decimal": ("-" if f < 0 else "") + f"{integer}." + "".join(map(str, pre)) + "(" + "".join(map(str, rep)) + ")",
+               "repeating_block": "".join(map(str, rep)), "period": len(rep), "pre_period_digits": len(pre)}
+    out["reduced_denominator_only_2s_and_5s"] = core == 1
+    if digit is not None:
+        if digit < 1:
+            raise ValueError("digit position starts at 1")
+        out[f"digit_{digit}_after_point"] = (n * 10**digit // d) % 10
+    return out

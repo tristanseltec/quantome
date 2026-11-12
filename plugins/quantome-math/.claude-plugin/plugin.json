@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "quantome-math",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Exact, verifiable maths skills for learners and AI agents: solve-and-verify (exact fractions, answer-choice checking, backsolving), Data Sufficiency with counterexample proofs, a Socratic GMAT tutor linked to the Quantome textbook, and a practice generator whose answers are machine-verified.",
   "author": {
     "name": "The Quantome contributors",
