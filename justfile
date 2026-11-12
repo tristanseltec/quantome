@@ -27,3 +27,18 @@ check: content-check
     cargo fmt --all --check
     cargo clippy --workspace --all-targets -- -D warnings
     cargo test --workspace
+
+# Formula library tests + vendored-copy drift check
+py-check:
+    cd py && python3 -m pytest -q
+    python3 scripts/sync_plugins.py --check
+
+# Re-vendor the formula library into the plugins
+sync:
+    python3 scripts/sync_plugins.py
+
+# Validate the marketplace and plugins
+plugins-check:
+    claude plugin validate --strict .
+    claude plugin validate --strict plugins/quantome-clinical
+    claude plugin validate --strict plugins/quantome-author

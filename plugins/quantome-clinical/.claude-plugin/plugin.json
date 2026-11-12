@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "quantome-clinical",
+  "version": "0.1.0",
+  "description": "Preview: verified clinical calculations for healthcare professionals. IV fluids (Holliday–Segar, deficit, Parkland), weight-based dosing with caps, body size and renal function, GIR and infant nutrition, and CDC BMI-for-age z-scores. Every result is computed by tested code and shows its working, sources and verification level.",
+  "author": {
+    "name": "The Quantome contributors",
+    "url": "https://github.com/tristanseltec/quantome"
+  },
+  "homepage": "https://tristanseltec.github.io/quantome/",
+  "repository": "https://github.com/tristanseltec/quantome",
+  "license": "Apache-2.0",
+  "keywords": ["clinical", "medicine", "dosing", "iv-fluids", "nutrition", "paediatrics", "growth", "calculator"]
+}

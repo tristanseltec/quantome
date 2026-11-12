@@ -1,0 +1,28 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "quantome",
+  "owner": {
+    "name": "The Quantome contributors",
+    "url": "https://github.com/tristanseltec/quantome"
+  },
+  "metadata": {
+    "description": "Open, verified, executable skills for mathematics, biology and medicine, from the Quantome textbook. Professional-facing.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "quantome-clinical",
+      "source": "./plugins/quantome-clinical",
+      "description": "Preview: verified clinical calculations for healthcare professionals (IV fluids, dosing, renal function, GIR and infant nutrition, paediatric BMI z-scores). Tested code, with working and sources shown.",
+      "category": "health",
+      "keywords": ["clinical", "dosing", "iv-fluids", "nutrition", "paediatrics"]
+    },
+    {
+      "name": "quantome-author",
+      "source": "./plugins/quantome-author",
+      "description": "Contributor toolkit for the Quantome textbook: house-style chapter writing, code-output verification, citation checking, and independent fact-checking and clinical review agents.",
+      "category": "productivity",
+      "keywords": ["authoring", "verification", "open-educational-resources"]
+    }
+  ]
+}

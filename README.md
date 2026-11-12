@@ -13,7 +13,7 @@ Built by human researchers and AI agents, and published as a fast static website
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![AI agents welcome](https://img.shields.io/badge/AI%20agents-welcome-8a2be2.svg)](AGENTS.md)
 
-**[📖 Read the book](https://tristanseltec.github.io/quantome/)** · [Contribute](CONTRIBUTING.md) · [Guide for AI agents](AGENTS.md) · [Report an error](https://github.com/tristanseltec/quantome/issues/new/choose)
+**[📖 Read the book](https://tristanseltec.github.io/quantome/)** · [🤖 Install the skills](#use-quantome-as-claude-code-skills) · [Vision](docs/VISION.md) · [Contribute](CONTRIBUTING.md) · [Guide for AI agents](AGENTS.md) · [Report an error](https://github.com/tristanseltec/quantome/issues/new/choose)
 
 </div>
 
@@ -26,6 +26,24 @@ Most maths books stop at the exam or at the equation. Quantome follows one threa
 > *Can we estimate a person's risk of heart disease from their DNA, and how do we calculate a safe dose, fluid rate or growth centile for the patient in front of us?*
 
 Every chapter builds intuition first, then **derives** the mathematics instead of just stating it, works a numeric example by hand, and reproduces it in **code you can run**. It ends with practice problems whose answers are hidden until you click.
+
+## Use Quantome as Claude Code skills
+
+The same verified formulas that the book teaches are packaged as **installable skills**. Agents run tested code
+instead of doing arithmetic in their heads, and every answer shows its working, sources and verification level.
+
+```bash
+/plugin marketplace add tristanseltec/quantome
+/plugin install quantome-clinical@quantome   # professionals: fluids, dosing, renal, GIR/infant nutrition, BMI z-scores (preview)
+/plugin install quantome-author@quantome     # contributors: write chapters, verify code outputs, check citations
+```
+
+| Plugin | Skills | Agents |
+|---|---|---|
+| [**quantome-clinical**](plugins/quantome-clinical/) *(preview, professional-facing)* | `iv-fluids` · `dose-calculation` · `nutrition-calculations` · `paediatric-growth` | `clinical-calc-checker` |
+| [**quantome-author**](plugins/quantome-author/) | `write-chapter` · `verify-chapter` · `check-citations` | `fact-checker` · `clinical-reviewer` |
+
+More collections (statistics, genomics, AI-for-biomedicine, maths, tutoring) are on the [roadmap](docs/VISION.md#skill-collections-claude-code-plugin-marketplace).
 
 ## What's inside
 
@@ -82,6 +100,8 @@ flowchart LR
 
 ```text
 content/                     the book itself
+py/src/quantome/             single-source formulas + registry.toml + reference data (tested)
+plugins/                     Claude Code plugins (skills, agents, evals); marketplace in .claude-plugin/
   book.toml                  title, base URL, optional module order
   modules/NN-<module>/       one folder per module (self-contained)
     module.toml              title, summary, part heading
@@ -92,6 +112,10 @@ crates/
   book-ui/                   Leptos components: Shell, Sidebar, pages
   book-cli/                  the `book` binary
 ```
+
+**One source of truth:** every formula is implemented once in `py/src/quantome`, with tests taken from the original
+sources. The book teaches it, the skills run it, and CI fails if the copy vendored into a plugin drifts from the source.
+See [docs/VISION.md](docs/VISION.md).
 
 **Modular by design:** add, remove or reorder a module folder and the navigation, URLs and search index follow. Numeric prefixes set the order and are stripped from URLs. The engine is book-agnostic, so you can point `--content` at another directory to publish a different book.
 
@@ -111,6 +135,8 @@ Read **[CONTRIBUTING.md](CONTRIBUTING.md)** for the chapter format and the revie
 
 ### Roadmap: help wanted
 
+- [ ] Expert reviewers to move clinical formulas from L1 (machine-verified) to L2 (expert-reviewed): [issue #1](https://github.com/tristanseltec/quantome/issues/1)
+- [ ] New skill collections: `quantome-stats`, `quantome-genomics`, `quantome-ai-bio`
 - [ ] Interactive in-page calculators (dose, fluids, BMI z-score) that reuse the chapter formulas
 - [ ] Survival analysis and Cox models (time-to-event version of the capstone)
 - [ ] ECG and medical-imaging deep learning module

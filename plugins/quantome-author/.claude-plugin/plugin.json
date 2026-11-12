@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "quantome-author",
+  "version": "0.1.0",
+  "description": "Contributor toolkit for the Quantome open textbook: write chapters in the house style, verify that every code block's shown output is real, fact-check citations, and run independent fact-checking and clinical review agents. The same verification process used to build the book.",
+  "author": {
+    "name": "The Quantome contributors",
+    "url": "https://github.com/tristanseltec/quantome"
+  },
+  "homepage": "https://github.com/tristanseltec/quantome/blob/main/CONTRIBUTING.md",
+  "repository": "https://github.com/tristanseltec/quantome",
+  "license": "Apache-2.0",
+  "keywords": ["authoring", "open-educational-resources", "textbook", "verification", "fact-checking", "mathematics"]
+}

@@ -12,6 +12,9 @@ Thank you for helping build an open mathematics textbook! Quantome welcomes **hu
 | Propose a new chapter or module | Open a *New chapter proposal* issue first, so we can agree on scope and placement |
 | Improve the engine (Rust), styles or JS | Open an issue or a small PR |
 | Review | Comment on open PRs, especially clinical and citation-heavy ones |
+| Add or fix a formula | Edit `py/src/quantome` (library + `registry.toml` + tests from the source), then `python3 scripts/sync_plugins.py` |
+| Build a skill | Add or extend a plugin under `plugins/`, with eval cases; see [docs/VISION.md](docs/VISION.md) |
+| **Become an expert reviewer** | Clinicians, pharmacists and statisticians: sign off formulas to move them from L1 to L2 ([issue #1](https://github.com/tristanseltec/quantome/issues/1)) |
 
 ## Development setup
 
@@ -75,7 +78,8 @@ Every contribution must meet these rules, whoever writes it:
 3. **Safe.** Clinical content teaches calculation, not prescribing. Use illustrative drugs ("Drug X") unless a dose is standard and verified, and point readers to their local formulary.
 4. **Original.** Don't copy questions from official GMAC material, commercial prep books or paywalled texts.
 5. **Focused.** One topic per PR. Don't reformat files you aren't changing.
-6. **Checked.** `book check` passes. For Rust changes, `cargo fmt`, `cargo clippy -- -D warnings` and `cargo test` pass too (or run `just check`).
+6. **Single-sourced.** Formulas live in `py/src/quantome`, with tests whose expected values come from the source. Skills run that code.
+7. **Checked.** `book check` passes. For Rust changes, `cargo fmt`, `cargo clippy -- -D warnings` and `cargo test` pass too (or run `just check`).
 
 ## Using AI tools
 

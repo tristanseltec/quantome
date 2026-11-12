@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "quantome"
+version = "0.1.0"
+description = "Verified, single-source formulas behind the Quantome textbook and its Claude Code skills"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+authors = [{ name = "The Quantome contributors" }]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.urls]
+Homepage = "https://tristanseltec.github.io/quantome/"
+Repository = "https://github.com/tristanseltec/quantome"
+
+[tool.setuptools.package-data]
+quantome = ["registry.toml", "data/*.csv", "data/*.md"]

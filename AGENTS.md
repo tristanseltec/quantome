@@ -13,6 +13,11 @@ You're welcome to contribute to Quantome, an open mathematics textbook (GMAT qua
 | `crates/book-ui` | Leptos components, server-rendered to static HTML |
 | `crates/book-cli` | `book` binary: `build`, `serve`, `check`, `new` |
 | `assets/` | `style.css`, `book.js` (KaTeX, Mermaid, highlight.js, search, progress) |
+| `py/src/quantome/` | **Single-source formula library** (stdlib only) + `registry.toml` (sources, ranges, verification level) + `data/` |
+| `py/tests/` | Tests whose expected values come from the original sources and the book's worked examples |
+| `plugins/<name>/` | Claude Code plugins: `skills/*/SKILL.md`, `agents/*.md`, `evals/`. **`lib/` is generated; don't edit it** |
+| `.claude-plugin/marketplace.json` | The Quantome plugin marketplace |
+| `docs/VISION.md` | Mission, domains, verification levels, roadmap |
 
 URL slugs are file and folder names without the numeric prefix: `content/modules/02-algebra/01-linear-equations.md` becomes `/algebra/linear-equations/`.
 
@@ -22,7 +27,9 @@ URL slugs are file and folder names without the numeric prefix: `content/modules
 cargo run --release -p book-cli -- check   # build + validate links/answers/front matter (REQUIRED)
 cargo run --release -p book-cli -- build --out /tmp/<you>/dist   # build to a private dir if others build in parallel
 cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace   # Rust changes
-python -I path/to/snippet.py               # run extracted code blocks (numpy, scikit-learn, torch)
+python3 plugins/quantome-author/skills/verify-chapter/scripts/run_code_blocks.py <chapter.md> --python <py>  # shown vs real output
+cd py && python3 -m pytest -q && cd .. && python3 scripts/sync_plugins.py --check   # formula library + drift
+claude plugin validate --strict plugins/<name>   # plugin changes
 ```
 
 ## Workflow
@@ -47,6 +54,11 @@ python -I path/to/snippet.py               # run extracted code blocks (numpy, s
   - Never remove existing safety caveats.
 - **Synthetic data only** in code. Never require downloading restricted datasets (UK Biobank, dbGaP). Never include real patient data.
 - **Relative links only** (`../../<module>/<chapter>/`), because the site is served under a sub-path.
+- **Formulas live in one place.** Implement or fix a formula in `py/src/quantome`, never only in a chapter or a
+  plugin. Add a `registry.toml` entry and tests from the source, then run `python3 scripts/sync_plugins.py`.
+  New formulas start at `level = "L1"`. Only a human domain reviewer may raise one to L2.
+- **Skills compute, never guess.** A SKILL.md must make the agent run the tested script, ask for missing inputs,
+  refuse out-of-range inputs, and keep caveats. Clinical skills are professional-facing only.
 - **Stay in scope.** Don't edit unrelated files, reformat whole files, change the licence, or touch CI secrets.
 - **Markdown gotchas.**
   - A literal `$` is written `\$`.
@@ -55,6 +67,16 @@ python -I path/to/snippet.py               # run extracted code blocks (numpy, s
   - `<details>` blocks need blank lines around their Markdown content.
   - Mermaid labels go in double quotes.
 - **Licence.** Contributions are Apache-2.0. Don't paste copyrighted text, or questions from GMAC or commercial prep materials.
+
+## Recommended: install the contributor toolkit
+
+```bash
+/plugin marketplace add tristanseltec/quantome
+/plugin install quantome-author@quantome
+```
+
+It provides the `write-chapter`, `verify-chapter` and `check-citations` skills and the `fact-checker` and
+`clinical-reviewer` agents, which encode the process above.
 
 ## Good tasks for agents
 

@@ -1,0 +1,146 @@
+# Quantome formula registry: one entry per public formula.
+#
+# level: L0 draft · L1 machine-verified (tests from source values pass, citations resolve)
+#        L2 expert-reviewed (named domain reviewer) · L3 externally validated
+# Clinical skills are released as "preview" until every formula they use reaches L2 (see docs/VISION.md).
+# Reviewers: add yourself to `reviewers` with your role when you sign off, and raise `level`.
+
+[formula."clin.fluids.holliday_segar"]
+title = "Maintenance fluids (Holliday–Segar)"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/maintenance-fluids-holliday-segar"
+sources = ["Holliday MA, Segar WE. The maintenance need for water in parenteral fluid therapy. Pediatrics 1957;19(5):823–832."]
+caveats = [
+  "Use isotonic maintenance fluids (AAP 2018 guideline; NICE NG29 children, CG174 adults) to avoid iatrogenic hyponatraemia.",
+  "Restrict to 50–80 % of maintenance where ADH secretion is raised (NICE NG29).",
+  "Not for neonates (< 28 days): use day-of-life neonatal protocols.",
+  "Monitor electrolytes, weight and fluid balance.",
+]
+
+[formula."clin.fluids.deficit"]
+title = "Dehydration deficit"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/maintenance-fluids-holliday-segar"
+sources = ["Standard paediatric teaching: deficit (mL) = % dehydration × weight (kg) × 10; see NICE NG29 for replacement."]
+caveats = ["Clinical estimates of % dehydration are imprecise; reassess frequently.", "Shock is treated with fluid boluses first, per local guidance."]
+
+[formula."clin.fluids.parkland"]
+title = "Burns resuscitation (Parkland)"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/maintenance-fluids-holliday-segar"
+sources = ["Baxter CR, Shires T. Physiological response to crystalloid resuscitation of severe burns. Ann N Y Acad Sci 1968;150(3):874–894."]
+caveats = [
+  "Timing runs from the time of the burn, not arrival.",
+  "ATLS 10th edition starts adults at 2 mL/kg/%TBSA (3 for children); follow your burns service protocol.",
+  "Children also need maintenance fluid in addition.",
+]
+
+[formula."clin.dosing.weight_based"]
+title = "Weight-based dose with maximum cap"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/weight-and-body-size-based-dosing"
+sources = ["Standard pharmaceutical calculation; dose limits must come from the current formulary (e.g. BNF/BNFc)."]
+caveats = [
+  "The mg/kg value and maximum dose must come from the current formulary, not from this tool.",
+  "Confirm which weight the drug reference uses (actual, ideal or adjusted).",
+  "Independent double-check required before administration.",
+]
+
+[formula."clin.body.ibw_devine"]
+title = "Ideal body weight (Devine)"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/weight-and-body-size-based-dosing"
+sources = ["Devine BJ. Gentamicin therapy. Drug Intell Clin Pharm 1974;8:650–655."]
+caveats = ["Defined for heights ≥ 152.4 cm (5 ft); not for children."]
+
+[formula."clin.body.adjbw"]
+title = "Adjusted body weight"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/weight-and-body-size-based-dosing"
+sources = ["Common pharmacokinetic convention (factor 0.4), e.g. for aminoglycosides in obesity; check drug-specific guidance."]
+caveats = ["The 0.4 factor is drug-dependent; use the factor your drug reference specifies."]
+
+[formula."clin.body.bsa"]
+title = "Body surface area (Mosteller, Du Bois)"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/weight-and-body-size-based-dosing"
+sources = [
+  "Mosteller RD. Simplified calculation of body-surface area. N Engl J Med 1987;317(17):1098.",
+  "Du Bois D, Du Bois EF. A formula to estimate the approximate surface area if height and weight be known. Arch Intern Med 1916;17:863–871.",
+]
+caveats = ["Oncology protocols may cap BSA or specify the formula; follow the protocol."]
+
+[formula."clin.renal.cockcroft_gault"]
+title = "Creatinine clearance (Cockcroft–Gault)"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/weight-and-body-size-based-dosing"
+sources = ["Cockcroft DW, Gault MH. Prediction of creatinine clearance from serum creatinine. Nephron 1976;16(1):31–41."]
+caveats = [
+  "Adults only; unreliable with unstable creatinine (AKI), extremes of muscle mass, or amputation.",
+  "Many drug references specify Cockcroft–Gault rather than eGFR for dose adjustment; check which.",
+]
+
+[formula."clin.renal.schwartz_bedside"]
+title = "Paediatric eGFR (bedside Schwartz)"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/weight-and-body-size-based-dosing"
+sources = ["Schwartz GJ, et al. New equations to estimate GFR in children with CKD. J Am Soc Nephrol 2009;20(3):629–637."]
+caveats = ["Requires an enzymatic, IDMS-traceable creatinine assay.", "Unreliable in AKI."]
+
+[formula."clin.nutrition.gir"]
+title = "Glucose infusion rate"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/infant-and-neonatal-nutrition"
+sources = [
+  "Derived from units: d % = 10d mg/mL.",
+  "Target ranges: Mesotten D, et al. ESPGHAN/ESPEN/ESPR/CSPEN guidelines on pediatric parenteral nutrition: carbohydrates. Clin Nutr 2018;37(6 Pt B):2337–2343.",
+]
+caveats = ["Adjust to measured blood glucose per protocol.", "Peripheral dextrose is commonly limited to ~12.5 % (unit rule)."]
+
+[formula."clin.nutrition.infant_regimen"]
+title = "Infant enteral + parenteral regimen summary"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/infant-and-neonatal-nutrition"
+sources = [
+  "ESPGHAN/ESPEN/ESPR/CSPEN guidelines on pediatric parenteral nutrition. Clin Nutr 2018;37(6 Pt B).",
+  "Embleton ND, et al. Enteral nutrition in preterm infants (2022). J Pediatr Gastroenterol Nutr 2023;76(2):248–268.",
+]
+caveats = [
+  "Energy densities are approximate (dextrose 3.4 kcal/g, amino acids 4 kcal/g, 20 % lipid ~2 kcal/mL); use product labels.",
+  "Electrolytes, minerals and trace elements are not calculated here.",
+  "Targets come from your unit's neonatal protocol and dietitian; growth is the real test.",
+]
+
+[formula."clin.nutrition.mifflin_st_jeor"]
+title = "Resting energy expenditure (Mifflin–St Jeor)"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/nutrition-energy-and-parenteral-calculations"
+sources = ["Mifflin MD, St Jeor ST, et al. A new predictive equation for resting energy expenditure in healthy individuals. Am J Clin Nutr 1990;51(2):241–247."]
+caveats = ["Healthy adults; not validated for children or critical illness (use indirect calorimetry where available)."]
+
+[formula."clin.growth.cdc_bmi_for_age"]
+title = "BMI-for-age z-score and centile (CDC 2000, 2–20 years)"
+level = "L1"
+reviewers = []
+chapter = "clinical-mathematics/growth-and-bmi-in-children"
+sources = [
+  "CDC 2000 growth charts, BMI-for-age LMS file bmiagerev.csv (bundled).",
+  "Cole TJ. The LMS method for constructing normalized growth standards. Eur J Clin Nutr 1990;44(1):45–60.",
+]
+caveats = [
+  "CDC references (US); many countries use WHO (0–5 standards, 5–19 references) or UK-WHO/UK90 charts with different cut-offs.",
+  "Severe obesity is classified by % of the 95th centile, not by z-score.",
+  "Plot serial measurements; a single value is a screening result, not a diagnosis.",
+]
