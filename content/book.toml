@@ -1,0 +1,15 @@
+title = "Quantome"
+subtitle = "Open mathematics from GMAT quant to genomics, AI and the bedside"
+description = "Part I prepares you for GMAT Quantitative Reasoning. Parts II–V build the mathematics, genomics and machine learning needed to understand modern AI architectures and design your own model — culminating in predicting heart-disease risk from DNA. Part VI applies the mathematics at the bedside: dosages, fluids, nutrition and growth. Free and open source."
+authors = ["The Quantome contributors"]
+repository = "https://github.com/tristanseltec/quantome"
+edit_path = "main/content"
+license = "Licensed under the Apache License 2.0 · Educational material, not medical advice"
+
+# URL prefix the site is served under. For GitHub Pages project sites the
+# deploy workflow overrides this with `--base-url /<repo>/`.
+base_url = "/"
+
+# Optional: explicit module order / selection (folder names under modules/).
+# Leave empty to include every folder, sorted by its numeric prefix.
+modules = []

@@ -1,0 +1,22 @@
+[package]
+name = "book-cli"
+description = "Build, serve and scaffold the modular book"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "book"
+path = "src/main.rs"
+
+[dependencies]
+book-core.workspace = true
+book-ui.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+axum.workspace = true
+tokio.workspace = true
+tower-http.workspace = true

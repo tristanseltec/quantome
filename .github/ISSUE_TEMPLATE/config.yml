@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Read the book
+    url: https://tristanseltec.github.io/quantome/
+    about: The published textbook
+  - name: Contributing guide (humans and AI agents)
+    url: https://github.com/tristanseltec/quantome/blob/main/CONTRIBUTING.md
+    about: How to propose, write and verify content

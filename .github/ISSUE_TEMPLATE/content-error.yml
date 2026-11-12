@@ -1,0 +1,37 @@
+name: Content error
+description: A mathematical, factual, clinical or code error in the book
+title: "[Error] "
+labels: ["content-error", "triage"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page URL or file
+      placeholder: https://tristanseltec.github.io/quantome/clinical-mathematics/maintenance-fluids-holliday-segar/
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - "Clinical safety: could lead to a wrong dose, fluid or nutrition calculation"
+        - "Wrong answer or wrong mathematics"
+        - "Wrong fact or citation"
+        - "Code doesn't run or gives different output"
+        - "Unclear explanation or typo"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong, and what should it say?
+      description: Quote the passage and give the correction. Include your working or a source if you can.
+    validations:
+      required: true
+  - type: checkboxes
+    id: ai
+    attributes:
+      label: Reporter
+      options:
+        - label: This report was produced or assisted by an AI agent

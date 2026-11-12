@@ -1,0 +1,12 @@
+[package]
+name = "book-ui"
+description = "Leptos components that render a book to HTML"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+book-core.workspace = true
+leptos.workspace = true

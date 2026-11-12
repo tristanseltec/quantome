@@ -1,0 +1,44 @@
+name: New chapter or module proposal
+description: Propose new content (please open this before writing a large PR)
+title: "[Proposal] "
+labels: ["proposal"]
+body:
+  - type: input
+    id: title
+    attributes:
+      label: Proposed title
+    validations:
+      required: true
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part?
+      options:
+        - "I · GMAT Quantitative Reasoning"
+        - "II · Mathematics for Biomedical AI"
+        - "III · Genomics & Bioinformatics"
+        - "IV · Machine Learning & Deep Learning"
+        - "V · Capstone"
+        - "VI · Applied Clinical Mathematics"
+        - "New part"
+    validations:
+      required: true
+  - type: textarea
+    id: outline
+    attributes:
+      label: Outline and learning goals
+      description: Sections, prerequisites (link existing chapters), worked examples and code you plan to include.
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Key sources
+      description: Textbooks, papers or guidelines you will rely on.
+  - type: checkboxes
+    id: who
+    attributes:
+      label: Author
+      options:
+        - label: I plan to write this with help from an AI agent
+        - label: I have domain expertise in this topic (e.g. clinician, researcher)

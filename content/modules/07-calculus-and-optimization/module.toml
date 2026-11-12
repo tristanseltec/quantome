@@ -1,0 +1,3 @@
+title = "Calculus & Optimization"
+summary = "Gradients, the chain rule, backpropagation, loss functions and the optimizers that train models."
+part = "Part II · Mathematics for Biomedical AI"

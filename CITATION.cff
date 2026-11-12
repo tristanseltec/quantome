@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use Quantome in teaching or research, please cite it as below."
+title: "Quantome: Open Mathematics from GMAT Quant to Genomics, AI and the Bedside"
+type: software
+authors:
+  - name: "The Quantome contributors"
+repository-code: "https://github.com/tristanseltec/quantome"
+url: "https://tristanseltec.github.io/quantome/"
+license: Apache-2.0
+version: 0.1.0
+date-released: "2026-11-12"
+keywords:
+  - mathematics
+  - textbook
+  - open educational resources
+  - GMAT
+  - genomics
+  - machine learning
+  - deep learning
+  - clinical mathematics
+  - polygenic risk score
+  - rust
+  - leptos
