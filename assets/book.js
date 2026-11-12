@@ -47,7 +47,7 @@
       .filter((c) => !c.classList.contains("language-mermaid"));
     if (code.length) {
       try {
-        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js");
+        await loadScript(`${BASE}assets/vendor/highlight.js/highlight.min.js`);
         code.forEach((c) => window.hljs.highlightElement(c));
       } catch {}
     }
@@ -60,7 +60,8 @@
         return div;
       });
       try {
-        const { default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs");
+        await loadScript(`${BASE}assets/vendor/mermaid/mermaid.min.js`);
+        const mermaid = window.mermaid;
         const root = document.documentElement;
         const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
         mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "neutral", securityLevel: "strict" });

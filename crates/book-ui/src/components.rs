@@ -2,7 +2,9 @@ use book_core::{Book, ChapterRef};
 use leptos::prelude::*;
 use std::sync::Arc;
 
-const KATEX: &str = "https://cdn.jsdelivr.net/npm/katex@0.16.22/dist";
+/// Self-hosted KaTeX — vendored in `assets/vendor/katex` (version pinned in
+/// `assets/vendor/README.md`) so the book renders math without a network.
+const KATEX: &str = "assets/vendor/katex";
 
 /// Applied before first paint so the page never flashes the wrong theme.
 const THEME_BOOT: &str = "try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}";
@@ -46,9 +48,9 @@ pub fn Shell(
                 <meta name="description" content=description />
                 <script inner_html=THEME_BOOT></script>
                 <link rel="icon" href=book.asset_url("assets/favicon.svg") type="image/svg+xml" />
-                <link rel="stylesheet" href=format!("{KATEX}/katex.min.css") />
+                <link rel="stylesheet" href=book.asset_url(&format!("{KATEX}/katex.min.css")) />
                 <link rel="stylesheet" href=book.asset_url("assets/style.css") />
-                <script defer src=format!("{KATEX}/katex.min.js")></script>
+                <script defer src=book.asset_url(&format!("{KATEX}/katex.min.js"))></script>
                 <script defer src=book.asset_url("assets/book.js") data-base=base></script>
             </head>
             <body>
