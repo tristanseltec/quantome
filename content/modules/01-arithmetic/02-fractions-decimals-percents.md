@@ -71,3 +71,21 @@ $1.1^2 = 1.21$, so the population grew **21%**.
 Cross-multiply: $7 \times 14 = 98$ and $11 \times 9 = 99$. Since $98 < 99$, $\tfrac{7}{9} < \tfrac{11}{14}$. So **$\tfrac{11}{14}$** is larger.
 
 </details>
+
+4. A jacket's price falls from \$80 to \$60. By what percent did it fall?
+
+<details>
+<summary>Answer</summary>
+
+$\dfrac{80 - 60}{80} \times 100\% = 25\%$, so the price fell by **25%**.
+
+</details>
+
+5. A coat is sold at 20% off for \$64. What was the original price?
+
+<details>
+<summary>Answer</summary>
+
+The sale price is 0.8 of the original, so the original is $64 / 0.8 =$ **\$80**.
+
+</details>

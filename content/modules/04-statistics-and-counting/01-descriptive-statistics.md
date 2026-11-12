@@ -52,3 +52,30 @@ Sorted: $2, 4, 4, 7, 9, 11$. The median is $\tfrac{4 + 7}{2} =$ **5.5**.
 **Equal.** Adding 100 to every value doesn't change the spread.
 
 </details>
+
+3. The average of 4 numbers is 15. When a fifth number, 25, is added, what is the new average?
+
+<details>
+<summary>Answer</summary>
+
+Sums: $4 \times 15 = 60$, then $60 + 25 = 85$. New average $= 85 / 5 =$ **17**.
+
+</details>
+
+4. The mean of five consecutive integers is 21. What is the largest of them?
+
+<details>
+<summary>Answer</summary>
+
+Consecutive integers are evenly spaced, so mean = median = 21. The integers are 19, 20, 21, 22, 23, so the largest is **23**.
+
+</details>
+
+5. The standard deviation of a set of numbers is 4. Every value in the set is then multiplied by 2. What is the new standard deviation?
+
+<details>
+<summary>Answer</summary>
+
+Multiplying every value by $k$ multiplies the SD by $|k|$, so the new SD is $2 \times 4 =$ **8**.
+
+</details>

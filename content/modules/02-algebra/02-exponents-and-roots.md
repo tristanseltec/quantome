@@ -51,3 +51,30 @@ $3^{2x+2} = 3^{3x} \Rightarrow 2x + 2 = 3x \Rightarrow x = 2$.
 $5\sqrt2 + 3\sqrt2 = 8\sqrt2$.
 
 </details>
+
+3. If $5^{x+2} = 25^{x-1}$, what is $x$?
+
+<details>
+<summary>Answer</summary>
+
+$25^{x-1} = 5^{2x-2}$, so $x + 2 = 2x - 2 \Rightarrow x =$ **4**.
+
+</details>
+
+4. Simplify $\dfrac{4^7}{8^3}$.
+
+<details>
+<summary>Answer</summary>
+
+Rewrite with base 2: $\dfrac{2^{14}}{2^{9}} = 2^{5} =$ **32**.
+
+</details>
+
+5. Simplify $\sqrt{75} - \sqrt{12}$.
+
+<details>
+<summary>Answer</summary>
+
+$5\sqrt3 - 2\sqrt3 = 3\sqrt3$.
+
+</details>

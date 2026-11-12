@@ -51,3 +51,30 @@ Closing speed is 150 mph, so $300 / 150 =$ **2 hours**.
 $\tfrac1B = \tfrac13 - \tfrac14 = \tfrac1{12}$, so Bob takes **12 hours**.
 
 </details>
+
+3. A cyclist rides 24 miles at 12 mph, then returns the same 24 miles at 6 mph. What is the average speed for the whole trip?
+
+<details>
+<summary>Answer</summary>
+
+Times are $24/12 = 2$ hours and $24/6 = 4$ hours, so the average speed is $48 / 6 =$ **8 mph**, not the average of 6 and 12.
+
+</details>
+
+4. A speedboat traveling 60 km/h is chasing one traveling 45 km/h, and it is 15 km behind. How long until it catches up?
+
+<details>
+<summary>Answer</summary>
+
+Same direction, so the gap closes at $60 - 45 = 15$ km/h. Time $= 15 / 15 =$ **1 hour**.
+
+</details>
+
+5. Machine A makes a widget in 10 minutes and machine B in 15 minutes. Working together, how many widgets do they make in one hour?
+
+<details>
+<summary>Answer</summary>
+
+Rates add: $\tfrac{1}{10} + \tfrac{1}{15} = \tfrac{1}{6}$ widget per minute. In 60 minutes, $60/6 =$ **10 widgets**.
+
+</details>

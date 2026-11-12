@@ -49,3 +49,30 @@ Case 2: $-(x + 1) = 2x - 4 \Rightarrow x = 1$. Check: $|2| = 2$, but $2x - 4 = -
 So **$x = 5$**. Always check absolute-value solutions.
 
 </details>
+
+3. Solve $|x - 10| > 6$.
+
+<details>
+<summary>Answer</summary>
+
+Read it as a distance: $x$ must be more than 6 away from 10, so $x < 4$ or $x > 16$.
+
+</details>
+
+4. Solve $3(x - 2) \le 2x + 1$.
+
+<details>
+<summary>Answer</summary>
+
+$3x - 6 \le 2x + 1 \Rightarrow x \le$ **7**.
+
+</details>
+
+5. How many integers $n$ satisfy $|n + 2| \le 5$?
+
+<details>
+<summary>Answer</summary>
+
+$-5 \le n + 2 \le 5 \Rightarrow -7 \le n \le 3$. Counting the endpoints, $7 + 3 + 1 =$ **11** integers.
+
+</details>

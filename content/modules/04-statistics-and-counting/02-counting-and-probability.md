@@ -50,3 +50,30 @@ Treat the pair as one unit: $4!$ arrangements, times $2!$ for the order within t
 $\tfrac{4}{52} \cdot \tfrac{3}{51} = \tfrac{12}{2652} = \tfrac{1}{221}$.
 
 </details>
+
+3. In how many ways can 3 different books be arranged on a shelf, chosen from a set of 7 books?
+
+<details>
+<summary>Answer</summary>
+
+Order matters, so $P(7,3) = 7 \times 6 \times 5 =$ **210**.
+
+</details>
+
+4. A fair die is rolled twice. What is the probability of rolling at least one 6?
+
+<details>
+<summary>Answer</summary>
+
+$P(\text{no 6}) = \tfrac{5}{6} \cdot \tfrac{5}{6} = \tfrac{25}{36}$, so $P(\text{at least one 6}) = 1 - \tfrac{25}{36} =$ **$\tfrac{11}{36}$**.
+
+</details>
+
+5. How many even three-digit numbers can be formed from the digits 1, 2, 3, 4, 5 if no digit is repeated?
+
+<details>
+<summary>Answer</summary>
+
+The units digit must be even: 2 choices (2 or 4). Then 4 choices for the hundreds digit and 3 for the tens digit: $2 \times 4 \times 3 =$ **24**.
+
+</details>
