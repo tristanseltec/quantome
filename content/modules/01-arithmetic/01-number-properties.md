@@ -83,3 +83,21 @@ $xy + x = x(y+1)$. A product is odd only if both factors are odd. So $x$ is odd 
 $n = 6q + 4 \Rightarrow 2n = 12q + 8 = 6(2q+1) + 2$. Remainder **2**. Check: $n = 4 \Rightarrow 2n = 8$, and $8 \div 6$ leaves remainder 2.
 
 </details>
+
+4. Is 8,472 divisible by both 6 and 8?
+
+<details>
+<summary>Answer</summary>
+
+It is even and $8 + 4 + 7 + 2 = 21$ is divisible by 3, so divisible by **6**. For 8, check the last three digits: $472 = 8 \times 59$. So it is divisible by **8** as well.
+
+</details>
+
+5. If $p$ and $q$ are prime numbers and $p + q = 21$, what is $pq$?
+
+<details>
+<summary>Answer</summary>
+
+21 is odd, so one of the primes must be even, and 2 is the only even prime. Then $q = 19$, which is prime. $pq = 2 \times 19 =$ **38**.
+
+</details>

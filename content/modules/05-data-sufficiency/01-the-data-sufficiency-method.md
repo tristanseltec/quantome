@@ -68,3 +68,39 @@ Every Data Sufficiency question gives a question stem and two statements. The an
 (1): if $k$ were odd, $k^2$ would be odd. So $k$ is even. Sufficient. (2): $3k$ is even, and 3 is odd, so $k$ is even. Sufficient. **D**.
 
 </details>
+
+**Question.** Is $x > 5$?
+
+1. $x^2 > 25$
+2. $x$ is positive
+
+<details>
+<summary>Answer</summary>
+
+(1): $x > 5$ or $x < -5$, so the answer could be yes or no. Not sufficient (BCE). (2): $x$ could be 1 or 6. Not sufficient. Together: positive *and* outside $(-5, 5)$ forces $x > 5$. **C**.
+
+</details>
+
+**Question.** What is the value of $|x|$?
+
+1. $x = -7$
+2. $x^2 = 49$
+
+<details>
+<summary>Answer</summary>
+
+(1): $x = -7$, so $|x| = 7$. Sufficient (A or D). (2): $x = 7$ or $x = -7$, but either way $|x| = 7$. Sufficient. **D**.
+
+</details>
+
+**Question.** What is the value of $x$?
+
+1. $x + 2y = 7$
+2. $2x + 4y = 14$
+
+<details>
+<summary>Answer</summary>
+
+(1): one equation with two unknowns, so infinitely many solutions. Not sufficient (BCE). (2): dividing by 2 gives $x + 2y = 7$ — the same line as (1), so it adds no information. Even together, not sufficient. **E**.
+
+</details>

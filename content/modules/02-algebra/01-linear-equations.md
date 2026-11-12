@@ -44,3 +44,30 @@ Multiply by 3: $x + 12 = 6x - 3 \Rightarrow 15 = 5x \Rightarrow x = 3$.
 $a + c = 50$ and $12a + 7c = 500$. Substitute $c = 50 - a$: $12a + 350 - 7a = 500 \Rightarrow a = 30$.
 
 </details>
+
+3. If $4x - y = 11$ and $x + y = 9$, what is $y$?
+
+<details>
+<summary>Answer</summary>
+
+Add the equations: $5x = 20$, so $x = 4$, and $y = 9 - x =$ **5**.
+
+</details>
+
+4. How many ordered pairs $(x, y)$ satisfy both $2x + 3y = 12$ and $4x + 6y = 24$?
+
+<details>
+<summary>Answer</summary>
+
+The second equation is twice the first: they are the same line, so there are **infinitely many** solutions.
+
+</details>
+
+5. Five times a number, decreased by 8, equals three times the number plus 4. What is the number?
+
+<details>
+<summary>Answer</summary>
+
+$5n - 8 = 3n + 4 \Rightarrow 2n = 12 \Rightarrow n =$ **6**.
+
+</details>
