@@ -1,5 +1,5 @@
 +++
-summary = "Compute eigenvalues and eigenvectors, derive PCA as variance maximisation, connect it to the SVD, and use top principal components to reveal and correct for ancestry in genotype data."
+summary = "Compute eigenvalues and eigenvectors, derive PCA as variance maximisation, connect it to the SVD, measure low-rank approximation error and conditioning, and use top principal components to reveal and correct for ancestry in genotype data."
 +++
 
 # Eigenvectors, SVD and PCA
@@ -128,6 +128,34 @@ Truncating the SVD to the top $K$ terms, $\mathbf{X}_K = \sum_{k=1}^K s_k\mathbf
 > [!WARNING]
 > PCA must be run on **centred** data, otherwise PC1 mostly points towards the mean. And it is scale-sensitive: a feature measured in large units (LDL in mg/dL rather than mmol/L) will dominate. Standardise features with different units first.
 
+### Low-rank approximation: what truncation throws away
+
+How much does the truncated sum $\mathbf{X}_K$ lose? Measure a matrix by its **Frobenius norm**, the L2 norm of all its entries read as one long vector: $\lVert\mathbf{X}\rVert_F^2 = \sum_{i,j}x_{ij}^2$. That is the sum of the diagonal entries of $\mathbf{X}^\top\mathbf{X}$ (entry $j$ is the sum of squares of column $j$), which is its trace, which is the sum of its eigenvalues $s_k^2$. The error $\mathbf{X} - \mathbf{X}_K = \sum_{k>K}s_k\mathbf{u}_k\mathbf{v}_k^\top$ is itself an SVD, with singular values $s_{K+1}, s_{K+2}, \dots$, so the same formula applies to it:
+
+> [!IMPORTANT]
+> $$\lVert\mathbf{X}\rVert_F^2 = \sum_k s_k^2, \qquad \lVert\mathbf{X}-\mathbf{X}_K\rVert_F = \sqrt{s_{K+1}^2 + s_{K+2}^2 + \dots}$$
+
+Eckart–Young adds that no other rank-$K$ matrix has a smaller error. With singular values $(4, 2, 1)$, the best rank-1 approximation has error $\sqrt{4 + 1}\approx2.24$, and its squared error is $5/21\approx24\%$ of $\lVert\mathbf{X}\rVert_F^2$. For centred data this relative squared error is exactly the fraction of variance that the top $K$ PCs do *not* explain.
+
+Storing $\mathbf{X}_K$ takes $K(n + p + 1)$ numbers instead of $np$; the same economy applied to a weight update is LoRA ([genomic foundation models](../../deep-architectures-for-sequences/genomic-foundation-models/)).
+
+### Positive semi-definite matrices and the condition number
+
+We showed that $\mathbf{w}^\top\mathbf{C}\mathbf{w}\ge0$ for every $\mathbf{w}$. A symmetric matrix with this property is **positive semi-definite** (PSD). Every matrix of the form $\mathbf{X}^\top\mathbf{X}$ is PSD, because $\mathbf{w}^\top\mathbf{X}^\top\mathbf{X}\mathbf{w} = \lVert\mathbf{X}\mathbf{w}\rVert^2\ge0$, and its eigenvalues are non-negative, because for a unit eigenvector $\mathbf{v}^\top\mathbf{X}^\top\mathbf{X}\mathbf{v} = \lambda\,\mathbf{v}^\top\mathbf{v} = \lambda$. An eigenvalue is zero exactly when $\mathbf{X}\mathbf{v} = \mathbf{0}$: the columns are linearly dependent ([vectors and matrices](../../linear-algebra/vectors-and-matrices/)) and the matrix is singular. With more SNPs than people that is guaranteed, so $\mathbf{C}$ then always has zero eigenvalues.
+
+Between healthy and singular lies *ill-conditioned*. For a symmetric matrix $\mathbf{S}$ with positive eigenvalues, the **condition number** is
+
+> [!IMPORTANT]
+> $$\kappa(\mathbf{S}) = \frac{\lambda_\text{max}}{\lambda_\text{min}}$$
+
+Why this ratio? Since $\mathbf{S}^{-1} = \mathbf{V}\boldsymbol{\Lambda}^{-1}\mathbf{V}^\top$, solving $\mathbf{S}\mathbf{w} = \mathbf{b}$ divides the part of $\mathbf{b}$ along each eigenvector $\mathbf{v}_k$ by $\lambda_k$. An error along the weakest direction is magnified by $1/\lambda_\text{min}$ while a signal along the strongest is shrunk by $1/\lambda_\text{max}$, so a relative error in $\mathbf{b}$ can grow by a factor of up to $\kappa$.
+
+Two standardised SNPs with correlation $\rho$ have the correlation matrix $\begin{bmatrix}1&\rho\\\rho&1\end{bmatrix}$, with eigenvalues $1\pm\rho$ (the pattern of the worked example below). So $\kappa = (1+\rho)/(1-\rho)$: 3 for $\rho = 0.5$, 19 for $\rho = 0.9$, 199 for $\rho = 0.99$. Strong LD means an ill-conditioned problem. Later chapters lean on this three times.
+
+- The eigenvalues of $\mathbf{X}^\top\mathbf{X}$ are $s_k^2$, so its condition number is $(s_1/s_p)^2$, the *square* of the ratio for $\mathbf{X}$: one more reason [linear regression](../../classical-machine-learning/linear-and-logistic-regression/) software works on $\mathbf{X}$ directly.
+- [Ridge regression](../../classical-machine-learning/regularization-and-the-bias-variance-tradeoff/) adds $\lambda$ to every eigenvalue, which lowers $\kappa$ (practice problem 8).
+- The condition number of a loss's curvature sets how slowly [gradient descent](../../calculus-and-optimization/gradient-descent-and-optimizers/) converges.
+
 ## Worked example
 
 **Eigenvalues by hand.** Let $\mathbf{A} = \begin{bmatrix}2&1\\1&2\end{bmatrix}$.
@@ -163,6 +191,10 @@ $$
 *Scores.* Project onto $\mathbf{v}_1 = \tfrac1{\sqrt2}(1,1)$: person 1 gets $(3+1)/\sqrt2 = 4/\sqrt2 = 2\sqrt2\approx2.83$; persons 1 and 2 get $+2\sqrt2$, persons 3 and 4 get $-2\sqrt2$. The variance of these scores is $4\cdot8/3 = 32/3 = \lambda_1$, as it should be. PC1 cleanly splits the four people into two groups.
 
 *SVD check.* $s_k = \sqrt{(n-1)\lambda_k}$: $s_1 = \sqrt{32}\approx5.657$ and $s_2 = \sqrt8\approx2.828$.
+
+**Rank-1 approximation by hand.** Keep only PC1: replace each row of $\mathbf{X}$ by its score times $\mathbf{v}_1$. The scores $\pm2\sqrt2$ times $\tfrac1{\sqrt2}(1,1)$ give the rows $(2,2)$, $(2,2)$, $(-2,-2)$, $(-2,-2)$ of $\mathbf{X}_1$. The error $\mathbf{X}-\mathbf{X}_1$ has rows $(1,-1)$, $(-1,1)$, $(1,-1)$, $(-1,1)$, with squared Frobenius norm $8 = s_2^2$, as the formula says. Out of $\lVert\mathbf{X}\rVert_F^2 = 40$ that is $20\%$: the variance PC1 does not explain.
+
+**Condition number by hand.** $\mathbf{S} = \begin{bmatrix}1&0.99\\0.99&1\end{bmatrix}$ has eigenvalues $1.99$ and $0.01$, so $\kappa = 199$. For $\mathbf{b} = (1,1)$, which lies along $\mathbf{v}_1$, the solution of $\mathbf{S}\mathbf{w} = \mathbf{b}$ is $\mathbf{w} = \mathbf{b}/1.99\approx(0.5025, 0.5025)$. Add the error $(0.01, -0.01)$, which lies along $\mathbf{v}_2$ and is 1% as long as $\mathbf{b}$: the solution moves by $(0.01, -0.01)/0.01 = (1, -1)$, which is 199% as long as $\mathbf{w}$. A 1% error in, a 199% error out: a factor of exactly $\kappa$.
 
 ## In code
 
@@ -258,6 +290,58 @@ PC1 separates the two populations: their means are −7.40 and +7.40, and in thi
 
 > [!NOTE]
 > In the output above, PC2's population means are printed as $0.02$ and $-0.02$; their exact values are noise. The sign and size of PC2 carry no population information here.
+
+Finally, the new ideas on a synthetic matrix with three hidden directions plus noise.
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(7)
+n, p = 300, 40
+X = (rng.normal(size=(n, 3)) * [3.0, 2.0, 1.0]) @ rng.normal(size=(3, p))
+X = X + rng.normal(size=(n, p))                 # add noise
+X = X - X.mean(axis=0)                          # centre
+U, s, Vt = np.linalg.svd(X, full_matrices=False)
+print("top singular values:", s[:5].round(1))
+
+# Rank-K truncation: measured error versus the discarded singular values
+for K in (1, 3, 10):
+    XK = (U[:, :K] * s[:K]) @ Vt[:K]
+    err = np.linalg.norm(X - XK)                # Frobenius norm
+    print(f"K={K:2d}: error {err:6.2f}, formula {np.sqrt(np.sum(s[K:]**2)):6.2f}, "
+          f"relative squared error {err**2 / np.sum(s**2):.3f}")
+
+# Another rank-3 choice: project onto three random orthonormal directions
+Q, _ = np.linalg.qr(rng.normal(size=(p, 3)))
+print("random rank-3 error:", np.linalg.norm(X - X @ Q @ Q.T).round(2))
+
+# X^T X is PSD, and forming it squares the condition number
+evals = np.linalg.eigvalsh(X.T @ X)             # ascending
+print("smallest eigenvalue:", evals[0].round(1), "| s1/sp:", (s[0] / s[-1]).round(2),
+      "| squared:", ((s[0] / s[-1])**2).round(1), "| kappa(X^T X):", (evals[-1] / evals[0]).round(1))
+
+# Power iteration: repeated multiplication by X^T X finds v1
+v = rng.normal(size=p)
+for step in range(1, 11):
+    v = X.T @ (X @ v)                           # never forms the p x p matrix
+    v /= np.linalg.norm(v)
+    if step in (1, 3, 10):
+        print(f"step {step:2d}: |cosine with v1| = {abs(v @ Vt[0]):.6f}")
+```
+
+```text
+top singular values: [322.3 185.7  88.   23.1  22.8]
+K= 1: error 230.60, formula 230.60, relative squared error 0.339
+K= 3: error 104.69, formula 104.69, relative squared error 0.070
+K=10: error  87.57, formula  87.57, relative squared error 0.049
+random rank-3 error: 376.19
+smallest eigenvalue: 135.8 | s1/sp: 27.66 | squared: 764.9 | kappa(X^T X): 764.9
+step  1: |cosine with v1| = 0.993188
+step  3: |cosine with v1| = 0.999998
+step 10: |cosine with v1| = 1.000000
+```
+
+The measured errors equal the formula, and three random directions do far worse than the top three (376 against 105). Forming $\mathbf{X}^\top\mathbf{X}$ squares the ratio $s_1/s_p$: 27.66 becomes about 765. The last lines are **power iteration**, the simplest of the iterative methods mentioned earlier: each multiplication by $\mathbf{X}^\top\mathbf{X}$ scales the part of the vector along $\mathbf{v}_k$ by $s_k^2$, so $\mathbf{v}_1$ gains a factor of $(s_1/s_2)^2\approx3$ per step on its nearest rival (practice problem 7).
 
 ## Biomedical connection
 
@@ -359,6 +443,38 @@ $\mathbf{A}^2\mathbf{v} = \mathbf{A}(\mathbf{A}\mathbf{v}) = \mathbf{A}(\lambda\
 <summary>Answer</summary>
 
 Confounding by ancestry: the SNP's allele frequency differs between ancestry groups in the sample, and disease rates (or case/control sampling) also differ between those groups for other reasons. The SNP was a marker of ancestry rather than of disease risk. Once ancestry is captured by the PCs, the association disappears.
+
+</details>
+
+6. A centred data matrix has singular values 6, 3 and 2. (a) What is $\lVert\mathbf{X}\rVert_F$? (b) What are the Frobenius errors of the best rank-1 and rank-2 approximations? (c) What is the smallest $K$ that keeps at least 90% of the variance?
+
+<details>
+<summary>Answer</summary>
+
+(a) $\lVert\mathbf{X}\rVert_F^2 = 36 + 9 + 4 = 49$, so $\lVert\mathbf{X}\rVert_F = 7$.
+(b) Rank 1 discards $s_2$ and $s_3$: error $\sqrt{9 + 4} = \sqrt{13}\approx3.61$. Rank 2 discards $s_3$: error $2$.
+(c) $K = 1$ keeps $36/49\approx73.5\%$; $K = 2$ keeps $45/49\approx91.8\%$. So $K = 2$.
+
+</details>
+
+7. Start from $\mathbf{w}_0 = (1, 0)$ and multiply three times by $\mathbf{A} = \begin{bmatrix}2&1\\1&2\end{bmatrix}$ from the worked example. Which direction do the vectors approach, why, and how fast?
+
+<details>
+<summary>Answer</summary>
+
+$(1,0)\to(2,1)\to(5,4)\to(14,13)$. The ratio of the entries goes $0.5$, $0.8$, $0.93$, towards 1: the direction $(1,1)$, the top eigenvector.
+Why: $\mathbf{w}_0 = \tfrac12(1,1) + \tfrac12(1,-1)$, and each multiplication scales the first part by $\lambda_1 = 3$ and the second by $\lambda_2 = 1$, so $\mathbf{A}^t\mathbf{w}_0 = \tfrac12 3^t(1,1) + \tfrac12(1,-1)$, which is $(14, 13)$ for $t = 3$. Relative to the wanted part, the unwanted one shrinks by $\lambda_2/\lambda_1 = 1/3$ per step.
+
+</details>
+
+8. Two standardised SNPs have correlation 0.98. (a) Find the eigenvalues and condition number of their correlation matrix. (b) A ridge penalty adds $\lambda = 0.2$ to each eigenvalue. What is the new condition number? (c) Which combination of the two SNP weights can the data barely determine, and why?
+
+<details>
+<summary>Answer</summary>
+
+(a) $1 + 0.98 = 1.98$ and $1 - 0.98 = 0.02$, so $\kappa = 1.98/0.02 = 99$.
+(b) $(1.98 + 0.2)/(0.02 + 0.2) = 2.18/0.22\approx9.9$.
+(c) The *difference* of the weights, the direction $\tfrac1{\sqrt2}(1,-1)$. The two SNPs almost always agree, so the data have almost no variance in that direction ($\lambda_2 = 0.02$), and solving divides by 0.02, amplifying noise 50-fold.
 
 </details>
 

@@ -52,6 +52,22 @@ Strictly, adding $\mathbf{b}$ makes the map **affine** (it moves the origin), bu
 
 Why do we need non-linear activations between layers? Because composing linear maps gives another linear map: $\mathbf{W}_2(\mathbf{W}_1\mathbf{x}) = (\mathbf{W}_2\mathbf{W}_1)\mathbf{x}$. A hundred stacked linear layers without activations are no more expressive than one. This is the first lesson of [from perceptron to MLP](../../neural-networks/from-perceptron-to-mlp/).
 
+### Composition: why the rule is what it is
+
+The row-times-column rule looks arbitrary, but one requirement forces it: multiplying by $\mathbf{A}\mathbf{B}$ must do the same as multiplying by $\mathbf{B}$ and then by $\mathbf{A}$. Apply the matrix–vector rule twice:
+
+$$
+\big(\mathbf{A}(\mathbf{B}\mathbf{x})\big)_i = \sum_{l} A_{il}\sum_{j} B_{lj}\,x_j = \sum_{j}\Big(\sum_{l} A_{il}B_{lj}\Big)x_j.
+$$
+
+The bracket is $C_{ij}$ from the box above, so $\mathbf{C} = \mathbf{A}\mathbf{B}$ is the one matrix with $\mathbf{C}\mathbf{x} = \mathbf{A}(\mathbf{B}\mathbf{x})$ for every $\mathbf{x}$. **A matrix product is a composition of linear maps**, read right to left. The properties listed earlier now have short proofs.
+
+- **Associative.** $(\mathbf{A}\mathbf{B})\mathbf{C}$ and $\mathbf{A}(\mathbf{B}\mathbf{C})$ both mean "apply $\mathbf{C}$, then $\mathbf{B}$, then $\mathbf{A}$". In indices, both have entries $\sum_l\sum_m A_{il}B_{lm}C_{mj}$, and a finite sum can be added up in any order.
+- **Not commutative.** "$\mathbf{B}$ then $\mathbf{A}$" and "$\mathbf{A}$ then $\mathbf{B}$" are different instructions.
+- **Transpose reverses order.** $\big((\mathbf{A}\mathbf{B})^\top\big)_{ij} = (\mathbf{A}\mathbf{B})_{ji} = \sum_l A_{jl}B_{li} = \sum_l (\mathbf{B}^\top)_{il}(\mathbf{A}^\top)_{lj} = (\mathbf{B}^\top\mathbf{A}^\top)_{ij}$.
+
+The transpose rule is why gradients flow backwards. If $\mathbf{y} = \mathbf{W}_2\mathbf{W}_1\mathbf{x}$ and $\boldsymbol\delta$ is the gradient of a loss with respect to $\mathbf{y}$, the gradient with respect to $\mathbf{x}$ is $(\mathbf{W}_2\mathbf{W}_1)^\top\boldsymbol\delta = \mathbf{W}_1^\top\mathbf{W}_2^\top\boldsymbol\delta$: the transposed layers, visited last to first. That is [backpropagation](../../calculus-and-optimization/the-chain-rule-and-backpropagation/).
+
 ### Shapes and the batch dimension
 
 We never feed a network one example at a time; we feed a **batch** of $B$ examples. Stack the inputs as the rows of a matrix $\mathbf{X}\in\mathbb{R}^{B\times n_\text{in}}$. Then the whole batch is processed by one matrix multiplication:
@@ -111,6 +127,14 @@ So $(B, n_\text{out}) + (n_\text{out},)$ works: the bias is added to every row. 
 
 The last row is the heart of [attention](../../deep-architectures-for-sequences/attention-and-transformers/). Einsum strings double as documentation: they state the shapes.
 
+### Counting the cost: brackets and batches
+
+Associativity says the *answer* does not depend on the brackets. The *cost* does. Let $\mathbf{A}$ be $m\times n$, $\mathbf{B}$ be $n\times k$ and $\mathbf{x}$ a $k$-vector. Computing $(\mathbf{A}\mathbf{B})\mathbf{x}$ forms a matrix first: $mnk + mk$ multiply-adds. Computing $\mathbf{A}(\mathbf{B}\mathbf{x})$ needs only two matrix–vector products: $nk + mn$. With $m = n = k = 1000$ that is $1.001\times10^9$ against $2\times10^6$, about 500 times cheaper. Always start multiplying from the end that holds a vector. Reverse-mode differentiation is this trick applied to the chain rule.
+
+The same counting explains **low-rank layers**. Replace an $n_\text{out}\times n_\text{in}$ weight matrix by a product $\mathbf{B}\mathbf{A}$, with $\mathbf{A}$ of shape $r\times n_\text{in}$ and $\mathbf{B}$ of shape $n_\text{out}\times r$. That takes $r(n_\text{in} + n_\text{out})$ parameters instead of $n_\text{in}n_\text{out}$: for $n_\text{in} = n_\text{out} = 1024$ and $r = 8$, 16,384 instead of 1,048,576. The price is that $\mathbf{B}\mathbf{A}$ has [rank](../../linear-algebra/vectors-and-matrices/) at most $r$, because every output is a combination of the $r$ columns of $\mathbf{B}$. This is the idea behind LoRA fine-tuning in [genomic foundation models](../../deep-architectures-for-sequences/genomic-foundation-models/).
+
+**Batched products.** On arrays with more than two axes, `@` treats the **last two axes** as matrices and every axis before them as batch: $(B, n, m)$ `@` $(B, m, k)$ gives $(B, n, k)$, one matrix product per example. Attention relies on this. With queries and keys of shape $(B, h, L, d_k)$ (batch, heads, length, width), PyTorch's `Q @ K.transpose(-2, -1)` is $(B, h, L, d_k)$ `@` $(B, h, d_k, L)$ and gives scores of shape $(B, h, L, L)$: every position's query dotted with every position's key. The cost is $B\,h\,L^2 d_k$ multiply-adds, so doubling the sequence length quadruples it, a limit that [attention and transformers](../../deep-architectures-for-sequences/attention-and-transformers/) returns to.
+
 ## Worked example
 
 **A linear layer by hand.** Let
@@ -144,6 +168,8 @@ $$
 $$
 
 $\mathbf{B}$ swaps things: on the right it swaps the columns of $\mathbf{A}$; on the left it swaps the rows.
+
+**Composition and the transpose rule.** Feed $\mathbf{W}\mathbf{x} = (-2, 4)$ from the first example into a second layer $\mathbf{V} = \begin{bmatrix}1 & 2\end{bmatrix}$ (no bias): $\mathbf{V}(\mathbf{W}\mathbf{x}) = 1\cdot(-2) + 2\cdot4 = 6$. Composing first gives $\mathbf{V}\mathbf{W} = \begin{bmatrix}5 & 2 & -1\end{bmatrix}$ and $(\mathbf{V}\mathbf{W})\mathbf{x} = 5 + 4 - 3 = 6$, the same. The gradient of this output with respect to $\mathbf{x}$ is $(\mathbf{V}\mathbf{W})^\top = \mathbf{W}^\top\mathbf{V}^\top = (1 + 4,\ 0 + 2,\ -1 + 0) = (5, 2, -1)$.
 
 **Shapes through a tiny DNA model.** Batch of $B = 32$ sequences, $L = 1000$, one-hot $C = 4$:
 
@@ -286,6 +312,58 @@ linear on (B, L, C): (3, 6, 16)
 
 Two details to notice. One-hot encoding is itself a matrix operation: `np.eye(4)[idx]` selects rows of the identity matrix. And multiplying a one-hot row by a weight vector just *looks up* the weight for that base, which is why the per-position scores are drawn from $\{0.5, -1, 2, 0\}$. Embedding layers in language models work the same way.
 
+Finally, the rules on random matrices, the cost counts, a low-rank layer and a batched product with attention's shapes.
+
+```python
+import numpy as np
+import torch
+
+rng = np.random.default_rng(0)
+A, B, C = rng.normal(size=(5, 3)), rng.normal(size=(3, 7)), rng.normal(size=(7, 2))
+x = rng.normal(size=7)
+print("(AB)x = A(Bx):   ", np.allclose((A @ B) @ x, A @ (B @ x)))
+print("(AB)C = A(BC):   ", np.allclose((A @ B) @ C, A @ (B @ C)))
+print("(AB)^T = B^T A^T:", np.allclose((A @ B).T, B.T @ A.T))
+
+# Worked example: two layers W then V, and the gradient W^T V^T
+W = np.array([[1.0, 0.0, -1.0], [2.0, 1.0, 0.0]])
+V = np.array([[1.0, 2.0]])
+print("VW =", V @ W, " W^T V^T =", (W.T @ V.T).ravel())
+
+# Same answer, different cost (multiply-adds, m = n = k = 1000)
+m = n = k = 1000
+print("(AB)x:", m * n * k + m * k, " A(Bx):", n * k + m * n)
+
+# Low-rank layer: 1024 x 1024 weights as (1024 x 8) @ (8 x 1024)
+torch.manual_seed(0)
+down = torch.nn.Linear(1024, 8, bias=False)     # weight (8, 1024)
+up = torch.nn.Linear(8, 1024, bias=False)       # weight (1024, 8)
+merged = up.weight @ down.weight
+print("parameters:", up.weight.numel() + down.weight.numel(), "instead of", merged.numel(),
+      "| rank of the product:", int(torch.linalg.matrix_rank(merged)))
+
+# Batched matmul: attention scores for B=2, h=4 heads, L=6, d_k=8
+Q, K = torch.randn(2, 4, 6, 8), torch.randn(2, 4, 6, 8)
+S = Q @ K.transpose(-2, -1)                     # (2,4,6,8) @ (2,4,8,6)
+print("scores:", tuple(S.shape), "| multiply-adds:", 2 * 4 * 6 * 6 * 8)
+print("matches einsum:", torch.allclose(S, torch.einsum("bhqd,bhkd->bhqk", Q, K), atol=1e-5))
+print("S[1,2,3,5] is q.k:", torch.allclose(S[1, 2, 3, 5], Q[1, 2, 3] @ K[1, 2, 5], atol=1e-5))
+```
+
+```text
+(AB)x = A(Bx):    True
+(AB)C = A(BC):    True
+(AB)^T = B^T A^T: True
+VW = [[ 5.  2. -1.]]  W^T V^T = [ 5.  2. -1.]
+(AB)x: 1001000000  A(Bx): 2000000
+parameters: 16384 instead of 1048576 | rank of the product: 8
+scores: (2, 4, 6, 6) | multiply-adds: 2304
+matches einsum: True
+S[1,2,3,5] is q.k: True
+```
+
+The merged low-rank matrix fills a $1024\times1024$ array, yet its rank is 8: it holds only eight independent directions.
+
 ## Biomedical connection
 
 Every architecture in [deep architectures for sequences](../../deep-architectures-for-sequences/convolutional-networks-for-dna/) is a pipeline of tensor operations whose shapes you can now track. A convolutional filter sliding along a one-hot sequence takes, at each position, a dot product between a small $k\times4$ weight matrix and a $k\times4$ window of DNA; a filter that has learned a transcription-factor binding motif fires where that motif occurs. A transformer turns each position into a vector and computes all pairwise dot products in one batched matrix multiplication.
@@ -340,6 +418,39 @@ Shapes: input $(64, 2000)$, hidden $(64, 128)$, output $(64, 1)$.
 <summary>Answer</summary>
 
 (a) `"ii->"`. (b) `"bnm,bmk->bnk"`. (c) `"blc->bc"`.
+
+</details>
+
+6. Let $\mathbf{A} = \begin{bmatrix}1 & 2 & 0\\ 0 & 1 & -1\end{bmatrix}$ and $\mathbf{B} = \begin{bmatrix}1 & 0\\ 2 & 1\\ 1 & 3\end{bmatrix}$. Compute $\mathbf{A}\mathbf{B}$ and check that $(\mathbf{A}\mathbf{B})^\top = \mathbf{B}^\top\mathbf{A}^\top$. Is $\mathbf{A}^\top\mathbf{B}^\top$ defined?
+
+<details>
+<summary>Answer</summary>
+
+$\mathbf{A}\mathbf{B} = \begin{bmatrix}1 + 4 + 0 & 0 + 2 + 0\\ 0 + 2 - 1 & 0 + 1 - 3\end{bmatrix} = \begin{bmatrix}5 & 2\\ 1 & -2\end{bmatrix}$, so $(\mathbf{A}\mathbf{B})^\top = \begin{bmatrix}5 & 1\\ 2 & -2\end{bmatrix}$.
+$\mathbf{B}^\top\mathbf{A}^\top = \begin{bmatrix}1 & 2 & 1\\ 0 & 1 & 3\end{bmatrix}\begin{bmatrix}1 & 0\\ 2 & 1\\ 0 & -1\end{bmatrix} = \begin{bmatrix}5 & 1\\ 2 & -2\end{bmatrix}$, the same.
+$\mathbf{A}^\top\mathbf{B}^\top$ is $(3\times2)(2\times3)$: defined, but $3\times3$. It equals $(\mathbf{B}\mathbf{A})^\top$, a different matrix.
+
+</details>
+
+7. A layer without bias maps 4,096 features to 4,096 features. (a) How many parameters does it have? (b) Replace its weight matrix by $\mathbf{B}\mathbf{A}$, with $\mathbf{A}$ of shape $16\times4096$ and $\mathbf{B}$ of shape $4096\times16$. How many parameters now, and how many multiply-adds per input if you compute $\mathbf{B}(\mathbf{A}\mathbf{x})$? (c) What does it cost to form $\mathbf{B}\mathbf{A}$ first?
+
+<details>
+<summary>Answer</summary>
+
+(a) $4096^2 = 16{,}777{,}216$, and as many multiply-adds per input.
+(b) $16\cdot4096 + 4096\cdot16 = 131{,}072$ parameters, 128 times fewer, and 131,072 multiply-adds per input.
+(c) $4096\cdot16\cdot4096 = 268{,}435{,}456$ multiply-adds, once; after that every input costs 16,777,216 again. Associativity guarantees the same outputs. Only the cost differs.
+
+</details>
+
+8. In a transformer, `Q` and `K` both have shape $(8, 4, 200, 16)$: batch, heads, length, $d_k$. (a) What is the shape of `Q @ K.transpose(-2, -1)`, and how many multiply-adds does it take? (b) Why does `Q @ K` raise an error? (c) With length 16 instead of 200, `Q @ K` would run. Why is that worse?
+
+<details>
+<summary>Answer</summary>
+
+(a) $(8, 4, 200, 16)$ `@` $(8, 4, 16, 200)$ gives $(8, 4, 200, 200)$, at a cost of $8\cdot4\cdot200\cdot200\cdot16 = 20{,}480{,}000$ multiply-adds.
+(b) The last two axes would be $(200\times16)(200\times16)$, and the inner dimensions 16 and 200 differ.
+(c) With $L = d_k = 16$ the shapes match by accident and the output has the expected shape $(8, 4, 16, 16)$. But each entry is now a query dotted with a *column* of `K` (one feature across all positions), not with a key. Nothing crashes and the model is silently wrong. Shape checks only catch bugs when the axes differ in size, so test with $L\neq d_k$.
 
 </details>
 

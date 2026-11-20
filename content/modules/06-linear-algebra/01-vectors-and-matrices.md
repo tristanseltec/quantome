@@ -1,5 +1,5 @@
 +++
-summary = "Represent patients and DNA as vectors and datasets as matrices, and measure size, similarity and distance with norms, dot products and cosine similarity."
+summary = "Represent patients and DNA as vectors and datasets as matrices, measure size, similarity and distance with norms, dot products and cosine similarity, project one vector onto another, and spot redundant columns through rank."
 +++
 
 # Vectors and Matrices
@@ -92,6 +92,17 @@ It is used to compare embeddings (the learned vectors a neural network produces 
 > [!WARNING]
 > Cosine similarity on raw 0/1/2 dosages depends on which allele you called "alternate". Swap the coding of one SNP and the similarity changes. In genetics we usually **centre** each SNP (subtract its mean) and often scale it before comparing people. Centred cosine similarity is exactly the Pearson correlation.
 
+### Projection: the shadow of one vector on another
+
+How much of $\mathbf{x}$ lies along the direction of $\mathbf{u}$? Picture a light shining straight down onto the line through $\mathbf{u}$: the **projection** is the shadow that $\mathbf{x}$ casts on that line. The shadow is some multiple $c\,\mathbf{u}$, and the leftover **residual** $\mathbf{r} = \mathbf{x} - c\,\mathbf{u}$ is at right angles to $\mathbf{u}$, so $\mathbf{u}\cdot(\mathbf{x} - c\,\mathbf{u}) = 0$. Solving for $c$:
+
+> [!IMPORTANT]
+> $$\operatorname{proj}_{\mathbf{u}}\mathbf{x} = c\,\mathbf{u}, \qquad c = \frac{\mathbf{u}\cdot\mathbf{x}}{\mathbf{u}\cdot\mathbf{u}}$$
+
+For $\mathbf{x} = (2, 3)$ and $\mathbf{u} = (1, 1)$: $c = 5/2$, the projection is $(2.5, 2.5)$, and the residual $(-0.5, 0.5)$ has dot product $-0.5 + 0.5 = 0$ with $\mathbf{u}$.
+
+If $\mathbf{u}$ has length 1, then $c = \mathbf{u}\cdot\mathbf{x}$ is the coordinate of $\mathbf{x}$ along $\mathbf{u}$; a principal-component score in [PCA](../../linear-algebra/eigenvectors-svd-and-pca/) is exactly this number. The projection is also the closest point to $\mathbf{x}$ on the line: any other multiple $c'\mathbf{u}$ misses $\mathbf{x}$ by $\mathbf{r} + (c - c')\mathbf{u}$, two orthogonal parts, so by Pythagoras the squared miss is $\lVert\mathbf{r}\rVert^2 + (c - c')^2\lVert\mathbf{u}\rVert^2 \ge \lVert\mathbf{r}\rVert^2$. Projection is therefore a **least-squares** fit, and [linear regression](../../classical-machine-learning/linear-and-logistic-regression/) is the same idea with many columns at once.
+
 ### Matrices: a cohort as a table
 
 A **matrix** is a rectangular grid of numbers. An $n \times p$ matrix has $n$ rows and $p$ columns. The convention in statistics and machine learning is:
@@ -137,6 +148,23 @@ We use inverses mostly in derivations, such as the least-squares solution $\hat{
 > [!NOTE]
 > Matrix multiplication itself (needed to make sense of $\mathbf{A}\mathbf{A}^{-1}$) is covered properly in the [next chapter](../../linear-algebra/matrix-multiplication-and-tensors/). For now, read $\mathbf{A}\mathbf{x}$ as "take the dot product of each row of $\mathbf{A}$ with $\mathbf{x}$".
 
+### Span, linear independence and rank
+
+The **span** of a set of vectors is everything their linear combinations can reach: one non-zero vector spans a line, two in different directions span a plane. Vectors are **linearly independent** if none lies in the span of the others; equivalently, the only combination $c_1\mathbf{x}_1 + \dots + c_k\mathbf{x}_k$ equal to $\mathbf{0}$ has every $c_j = 0$. The **rank** of a matrix is its number of independent columns, which always equals its number of independent rows (we use this without proof), so an $n\times p$ matrix has rank at most $\min(n, p)$. For example, $(1,0,1)$, $(0,1,1)$ and $(1,1,2)$ are dependent, because the weights $(1, 1, -1)$ combine them to $\mathbf{0}$; the matrix with these columns has rank 2.
+
+If the columns of a data matrix are dependent, then $\mathbf{X}\mathbf{v} = \mathbf{0}$ for some $\mathbf{v}\neq\mathbf{0}$, and for any weights $\mathbf{w}$
+
+$$
+\mathbf{X}(\mathbf{w} + \mathbf{v}) = \mathbf{X}\mathbf{w} + \mathbf{X}\mathbf{v} = \mathbf{X}\mathbf{w}.
+$$
+
+Two different weight vectors give every person the same prediction, so no data can choose between them. Moreover $\mathbf{X}^\top\mathbf{X}\mathbf{v} = \mathbf{0}$, and a matrix that sends a non-zero vector to zero cannot be undone: $\mathbf{X}^\top\mathbf{X}$ is **singular** (it has no inverse). Genetics gets here by two routes.
+
+- **Linkage disequilibrium.** Two SNPs in perfect LD ([DNA, genes and variation](../../genomics-foundations/dna-genes-and-variation/)) have identical columns. More often LD is strong but not perfect; then $\mathbf{X}^\top\mathbf{X}$ is invertible but **ill-conditioned**, and small changes in the data swing the weights wildly (see the code below).
+- **More SNPs than people.** If $p > n$, the rank is at most $n < p$, so the columns must be dependent. This is normal in genomics and is why [regularisation](../../classical-machine-learning/regularization-and-the-bias-variance-tradeoff/) is needed.
+
+`np.linalg.solve` does not reliably refuse such systems, so check `np.linalg.matrix_rank` when weights look wild.
+
 ## Worked example
 
 Two people are genotyped at five SNPs:
@@ -174,6 +202,8 @@ $$
 $$
 
 Check the first entry of $\mathbf{A}\mathbf{A}^{-1}$: row 1 of $\mathbf{A}$ dotted with column 1 of $\mathbf{A}^{-1}$ is $2\cdot1 + 1\cdot(-1) = 1$. The off-diagonal entry: $2\cdot(-1) + 1\cdot 2 = 0$. As expected.
+
+**7. A projection.** Project $\mathbf{a}$ onto $\mathbf{b}$: $c = \dfrac{\mathbf{b}\cdot\mathbf{a}}{\mathbf{b}\cdot\mathbf{b}} = \dfrac56$, so the residual is $\mathbf{r} = \mathbf{a} - \tfrac56\mathbf{b} = \left(-\tfrac56,\ \tfrac16,\ \tfrac13,\ 1,\ 0\right)$. Check: $\mathbf{r}\cdot\mathbf{b} = -\tfrac56 + \tfrac16 + \tfrac23 = 0$. The squared lengths add up as Pythagoras demands: $\tfrac{25}{6}$ for the projection plus $\tfrac{11}{6}$ for the residual is $6 = \lVert\mathbf{a}\rVert_2^2$.
 
 ## In code
 
@@ -260,6 +290,55 @@ Notice a few things:
 - The similarity matrix $\mathbf{S}$ is $6\times6$, **symmetric**, and has ones on the diagonal (everyone is perfectly similar to themselves).
 - `Gn @ Gn.T` computed all 36 dot products at once. This "normalise rows, then multiply by the transpose" trick is how nearest-neighbour search and attention scores are computed in practice.
 
+Next, the projection from step 7, rank, and a least-squares fit on two SNPs in near-perfect LD.
+
+```python
+import numpy as np
+
+# Projection: persons a and b from the worked example
+a = np.array([0.0, 1.0, 2.0, 1.0, 0.0])
+b = np.array([1.0, 1.0, 2.0, 0.0, 0.0])
+c = (a @ b) / (b @ b)
+r = a - c * b
+print("c =", c.round(4), " r =", r.round(4), " r.b =", abs(r @ b).round(10))
+
+# Perfect LD: a copied SNP adds a column but no new direction
+rng = np.random.default_rng(3)
+n = 500
+g1 = rng.binomial(2, 0.3, size=n).astype(float)
+g3 = rng.binomial(2, 0.5, size=n).astype(float)
+X = np.column_stack([g1, g1, g3])
+print("shape", X.shape, "rank", np.linalg.matrix_rank(X),
+      "| rank of X^T X:", np.linalg.matrix_rank(X.T @ X))
+
+# p > n: 5 people, 12 SNPs
+W = rng.binomial(2, 0.3, size=(5, 12)).astype(float)
+print("shape", W.shape, "rank", np.linalg.matrix_rank(W),
+      "| rank of W^T W:", np.linalg.matrix_rank(W.T @ W))
+
+# Near-perfect LD: SNP 2 differs from SNP 1 in 5 people out of 500
+g2 = g1.copy()
+g2[:5] = (g1[:5] + 1) % 3
+print("correlation:", np.corrcoef(g1, g2)[0, 1].round(3))
+Xc = np.column_stack([g1 - g1.mean(), g2 - g2.mean()])
+for trial in range(3):                          # same truth, fresh noise
+    y = 0.5 * Xc[:, 0] + rng.normal(0, 1, size=n)   # only SNP 1 matters
+    w = np.linalg.solve(Xc.T @ Xc, Xc.T @ y)    # solve, do not invert
+    print(f"trial {trial}: weights {w.round(2)}, sum {w.sum():.2f}")
+```
+
+```text
+c = 0.8333  r = [-0.8333  0.1667  0.3333  1.      0.    ]  r.b = 0.0
+shape (500, 3) rank 2 | rank of X^T X: 2
+shape (5, 12) rank 5 | rank of W^T W: 5
+correlation: 0.987
+trial 0: weights [ 0.56 -0.09], sum 0.47
+trial 1: weights [-0.22  0.75], sum 0.52
+trial 2: weights [ 0.66 -0.15], sum 0.51
+```
+
+The copied SNP leaves the rank at 2, and five people give twelve SNP columns a rank of only 5, so the $3\times3$ and $12\times12$ matrices are both singular. In the last part SNP 1 has a true weight of 0.5 and SNP 2 has no effect, yet the fit cannot tell them apart: in trial 1 it gives SNP 2 all the credit. Only the **sum** of the weights is stable.
+
 ## Biomedical connection
 
 The genotype matrix is the central object of statistical genetics. A genome-wide association study (GWAS) tests each column of $\mathbf{G}$ against a disease label. A **polygenic risk score** for coronary artery disease is a dot product $\mathbf{w}^\top\mathbf{x}$ between a person's dosage vector and a vector of per-allele weights estimated from a GWAS; Khera et al. (2018) showed that scores of this form, built from millions of variants, identify people with risk comparable to that of monogenic familial hypercholesterolemia. You will build such scores in [GWAS and polygenic risk scores](../../genomics-foundations/gwas-and-polygenic-risk-scores/).
@@ -320,6 +399,37 @@ The second matrix has determinant $1\cdot4 - 2\cdot2 = 0$: its second column is 
 <summary>Answer</summary>
 
 Let $\tilde x_i = x_i - \bar x$ and $\tilde y_i = y_i - \bar y$. Then $\tilde{\mathbf{x}}\cdot\tilde{\mathbf{y}} = \sum(x_i-\bar x)(y_i-\bar y)$, $\lVert\tilde{\mathbf{x}}\rVert_2 = \sqrt{\sum(x_i-\bar x)^2}$ and likewise for $\tilde{\mathbf{y}}$. Substituting into the cosine formula gives exactly $r$.
+
+</details>
+
+6. Four people have centred dosages $\mathbf{g} = (-1, 0, 1, 0)$ and centred LDL cholesterol $\mathbf{y} = (-0.4, -0.1, 0.6, -0.1)$ mmol/L (made-up numbers). Project $\mathbf{y}$ onto $\mathbf{g}$, check that the residual is orthogonal to $\mathbf{g}$, and interpret the coefficient.
+
+<details>
+<summary>Answer</summary>
+
+$c = \dfrac{\mathbf{g}\cdot\mathbf{y}}{\mathbf{g}\cdot\mathbf{g}} = \dfrac{0.4 + 0.6}{2} = 0.5$. The projection is $(-0.5, 0, 0.5, 0)$, the residual is $\mathbf{r} = (0.1, -0.1, 0.1, -0.1)$, and $\mathbf{g}\cdot\mathbf{r} = -0.1 + 0.1 = 0$.
+$c$ is the least-squares slope: in this toy sample each extra copy of the allele goes with 0.5 mmol/L more LDL.
+
+</details>
+
+7. A design matrix has columns $\mathbf{1} = (1, 1, 1, 1)$, a SNP dosage $\mathbf{g} = (0, 1, 2, 1)$, and $\mathbf{h} = (2, 1, 0, 1)$, the same SNP counted by its *other* allele. Find a non-zero $\mathbf{v}$ with $\mathbf{X}\mathbf{v} = \mathbf{0}$ and the rank of $\mathbf{X}$. What goes wrong in a fit?
+
+<details>
+<summary>Answer</summary>
+
+Everyone has two alleles, so $\mathbf{g} + \mathbf{h} = 2\cdot\mathbf{1}$ and $\mathbf{v} = (2, -1, -1)$ works. $\mathbf{1}$ and $\mathbf{g}$ are independent, so the rank is 2.
+Adding any multiple of $\mathbf{v}$ to the weights changes no prediction, so the weights are not determined and $\mathbf{X}^\top\mathbf{X}$ is singular. Drop $\mathbf{h}$.
+
+</details>
+
+8. Two standardised SNPs with correlation 0.99 give $\mathbf{A} = \begin{bmatrix}1 & 0.99\\ 0.99 & 1\end{bmatrix}$. Use the inverse formula to solve $\mathbf{A}\mathbf{w} = \mathbf{b}$ for $\mathbf{b} = (1, 1)$ and for $\mathbf{b}' = (1.01, 0.99)$. What changed, and what did not?
+
+<details>
+<summary>Answer</summary>
+
+$\det\mathbf{A} = 1 - 0.9801 = 0.0199$, so $\mathbf{w} = \dfrac{1}{0.0199}\,(b_1 - 0.99\,b_2,\ b_2 - 0.99\,b_1)$.
+For $\mathbf{b}$: $w_1 = w_2 = 0.01/0.0199 \approx 0.5025$. For $\mathbf{b}'$: $w_1 = 0.0299/0.0199 \approx 1.5025$ and $w_2 = -0.0099/0.0199 \approx -0.4975$.
+A 1% change in the data tripled one weight and flipped the sign of the other, yet their sum stayed at about 1.005. Nearly identical columns pin down the combined effect but not how to split it: the system is ill-conditioned, with a [condition number](../../linear-algebra/eigenvectors-svd-and-pca/) of 199.
 
 </details>
 
