@@ -75,6 +75,34 @@ $$
 
 The second form shows $I(X;Y) = D_{\mathrm{KL}}\big(p(x,y) \,\Vert\, p(x)p(y)\big)$: how far the joint distribution is from what it would be under independence. So $I(X; Y) \ge 0$, it equals zero exactly when $X$ and $Y$ are independent, and it is symmetric. Unlike correlation, it detects any kind of dependence, not just linear.
 
+### Conditional entropy and the chain rule
+
+The conditional entropy in that definition deserves a closer look, because it tells us how uncertainty about two things combines. To learn the pair $(X, Y)$ you can first learn $X$, and then learn whatever is still unknown about $Y$. The two amounts add.
+
+To see why, start from the multiplication rule of probability, $p(x, y) = p(x)\,p(y \mid x)$. Taking $-\log_2$ turns the product into a sum of surprises, $-\log_2 p(x, y) = -\log_2 p(x) - \log_2 p(y \mid x)$. Averaging both sides over the joint distribution gives the result.
+
+> [!IMPORTANT]
+> **Chain rule for entropy.**
+> $$H(X, Y) = H(X) + H(Y \mid X), \qquad H(Y \mid X) = \sum_x p(x)\,H(Y \mid X = x) = -\sum_{x, y} p(x, y)\log_2 p(y \mid x).$$
+
+If $X$ and $Y$ are independent, $H(Y \mid X) = H(Y)$ and the entropies simply add. Splitting the pair the other way round gives $H(X, Y) = H(Y) + H(X \mid Y)$. Setting the two splits equal and rearranging:
+
+$$
+I(X; Y) = H(X) - H(X \mid Y) = H(Y) - H(Y \mid X) = H(X) + H(Y) - H(X, Y).
+$$
+
+What $X$ tells you about $Y$ is exactly what $Y$ tells you about $X$. And because $I(X; Y) \ge 0$, we get $H(Y \mid X) \le H(Y)$: **on average, knowing more never increases uncertainty.**
+
+**A small example.** Suppose 20% of people carry a variant, and coronary artery disease develops in 20% of carriers and 7.5% of non-carriers, which is 10% of people overall (illustrative numbers, used again in the code below). Write $h(p) = -p\log_2 p - (1-p)\log_2(1-p)$ for the entropy of a yes/no variable. Then $H(X) = h(0.2) \approx 0.722$ and $H(Y) = h(0.1) \approx 0.469$ bits, and
+
+$$
+H(Y \mid X) = 0.2\,h(0.2) + 0.8\,h(0.075) \approx 0.2 \times 0.722 + 0.8 \times 0.384 \approx 0.452 \text{ bits}.
+$$
+
+So $H(X, Y) \approx 0.722 + 0.452 = 1.174$ bits and $I(X; Y) \approx 0.469 - 0.452 = 0.017$ bits. Knowing carrier status removes less than 4% of the uncertainty about disease.
+
+The rule extends to sequences: $H(X_1, \dots, X_L) = \sum_{t} H(X_t \mid X_1, \dots, X_{t-1})$. This is why a model that predicts each base from the bases before it can be scored one position at a time, and the per-position losses add up to the loss for the whole sequence. It is the next-token objective of [genomic foundation models](../../deep-architectures-for-sequences/genomic-foundation-models/).
+
 ## Sequence motifs and position weight matrices
 
 ### From aligned sites to a matrix
@@ -135,6 +163,37 @@ That last point is the deep reason cross-entropy is a good loss. It is a **prope
 > [!NOTE]
 > PyTorch's `F.cross_entropy` takes raw scores (logits), applies softmax internally, and uses natural logs, so its values are in nats. The gradient of softmax followed by cross-entropy with respect to the logits is simply $\mathbf{q} - \mathbf{y}$ (predicted probabilities minus one-hot target). This is derived in [loss functions](../../calculus-and-optimization/loss-functions/).
 
+### Bits, nats and perplexity
+
+A cross-entropy loss printed by a deep-learning library is usually in nats, while the information content of a motif is quoted in bits. The two differ only in the base of the logarithm. Since $\log_2 x = \ln x / \ln 2$,
+
+$$
+\text{bits} = \frac{\text{nats}}{\ln 2} \approx 1.443 \times \text{nats}, \qquad \text{nats} = \ln 2 \times \text{bits} \approx 0.693 \times \text{bits}.
+$$
+
+A model that knows nothing about DNA gives every base probability $1/4$. Its cross-entropy is 2 bits per base, or $\ln 4 \approx 1.386$ nats.
+
+Neither number is easy to picture. **Perplexity** turns a cross-entropy back into a count of choices.
+
+> [!IMPORTANT]
+> **Perplexity** of a model $q$ on $N$ observed tokens $x_1, \dots, x_N$:
+> $$\text{PP} = 2^{H} \ (H \text{ in bits}) = e^{H} \ (H \text{ in nats}), \qquad H = -\frac{1}{N}\sum_{i=1}^{N}\log q(x_i).$$
+
+Why is this a count? A model that spreads its probability evenly over $k$ options has cross-entropy $\log k$, so its perplexity is exactly $k$. A model with perplexity 3 is, on average, as uncertain as one choosing among 3 equally likely options. Moving the average inside the exponential gives a second reading:
+
+$$
+\text{PP} = \Big(\prod_{i=1}^{N} q(x_i)\Big)^{-1/N},
+$$
+
+one over the geometric mean of the probabilities the model gave to what actually happened. The base of the logarithm has cancelled, so perplexity has no unit.
+
+**A small example.** At four positions a DNA model gives the base that actually occurs the probabilities $0.5, 0.25, 0.25, 0.5$. The surprises are $1, 2, 2, 1$ bits, a mean of $1.5$ bits per base, or $1.5 \times 0.693 \approx 1.040$ nats. The perplexity is $2^{1.5} \approx 2.83$. With single-base tokens perplexity runs from 1 (always certain and right) to 4 (knows nothing), so this model has narrowed four choices to fewer than three.
+
+> [!WARNING]
+> Perplexity is counted per token. A model that reads DNA in non-overlapping 6-base tokens chooses among $4^6 = 4{,}096$ tokens, so its know-nothing perplexity is 4,096, not 4. Before comparing models with different tokenisations, divide the cross-entropy per token by the token length to get bits or nats **per base**.
+
+The toy language model in [genomic foundation models](../../deep-architectures-for-sequences/genomic-foundation-models/) reports its pretraining loss in exactly this way, in nats per base against the $\ln 4$ baseline.
+
 ## Worked example
 
 Eight aligned binding sites of a toy 4-base motif:
@@ -176,6 +235,8 @@ Total information content: $2 + 1.189 + 1 + 0 \approx 4.19$ bits. In a logo, pos
 - `GCGC`: $-1.585 - 1.585 - 1.585 + 0 = -4.755$ bits. Strongly disfavoured.
 
 A single-base change `TATA` → `GATA` drops the score by $1.585 - (-1.585) = 3.17$ bits, because it hits the 2-bit position. The change `TATA` → `TATC` costs nothing, because position 4 carries no information.
+
+**Step 5: entropy and perplexity of the whole motif.** The motif model treats positions as independent, so by the chain rule the entropy of a whole site is the sum of the position entropies: $0 + 0.811 + 1 + 2 = 3.811$ bits. That is the uncertainty of $2^{3.811} \approx 14$ equally likely sequences, out of $4^4 = 256$ possible 4-mers. Per position, the perplexity is $2^{3.811/4} \approx 1.94$: the motif leaves about two effective choices per base where the background leaves four. The gap between the 8 bits of a uniformly random 4-mer and $3.811$ bits is the $4.19$ bits of information content from Step 2.
 
 ## In code
 
@@ -302,6 +363,62 @@ torch CE = 0.1755 nats, manual = 0.1755
 
 The variant in this toy joint distribution more than doubles risk (20% in carriers versus 7.5% in non-carriers), yet it carries only 0.017 bits of information about disease status, out of a possible $H(Y) \approx 0.47$ bits. Individual variants are weak predictors; that is why we need many of them.
 
+The third snippet checks the chain rule on the same joint distribution, then converts a toy model's cross-entropy between nats, bits and perplexity.
+
+```python
+import numpy as np
+import torch
+import torch.nn.functional as F
+
+def H(p):
+    """Entropy in bits of a probability vector."""
+    p = np.asarray(p, dtype=float)
+    p = p[p > 0]
+    return -np.sum(p * np.log2(p))
+
+# ---- Conditional entropy and the chain rule: carrier status X, disease Y ----
+joint = np.array([[0.04, 0.16],     # rows: carrier yes / no
+                  [0.06, 0.74]])    # cols: CAD yes / no
+px, py = joint.sum(axis=1), joint.sum(axis=0)
+cond = joint / px[:, None]                               # P(Y | X = x), rows sum to 1
+H_y_given_each_x = np.array([H(row) for row in cond])
+H_y_given_x = np.sum(px * H_y_given_each_x)
+print(f"H(X) = {H(px):.4f}  H(Y) = {H(py):.4f}  H(X,Y) = {H(joint.ravel()):.4f} bits")
+print("H(Y | X = carrier), H(Y | X = non-carrier):", H_y_given_each_x.round(4))
+print(f"H(Y|X) = {H_y_given_x:.4f}  chain rule H(X) + H(Y|X) = {H(px) + H_y_given_x:.4f}")
+print(f"I(X;Y) = H(Y) - H(Y|X) = {H(py) - H_y_given_x:.4f} bits")
+
+# ---- Bits, nats and perplexity for a toy DNA model ----
+# The model's probabilities for A, C, G, T at four positions; the true bases are A, C, G, T
+probs = torch.tensor([[0.50, 0.20, 0.20, 0.10],
+                      [0.25, 0.25, 0.25, 0.25],
+                      [0.10, 0.15, 0.25, 0.50],
+                      [0.20, 0.20, 0.10, 0.50]])      # (positions=4, bases=4)
+target = torch.tensor([0, 1, 2, 3])
+loss_nats = F.cross_entropy(torch.log(probs), target).item()   # log-probabilities act as logits
+loss_bits = loss_nats / np.log(2)
+print(f"cross-entropy = {loss_nats:.4f} nats = {loss_bits:.4f} bits per base")
+print(f"perplexity = exp(nats) = {np.exp(loss_nats):.3f} = 2^bits = {2 ** loss_bits:.3f}")
+p_true = probs[torch.arange(4), target].numpy()
+print(f"1 / geometric mean of P(true base) = {1 / np.exp(np.mean(np.log(p_true))):.3f}")
+
+uniform = F.cross_entropy(torch.zeros(4, 4), target).item()    # equal logits: a know-nothing model
+print(f"know-nothing model: {uniform:.4f} nats = {uniform / np.log(2):.1f} bits, perplexity {np.exp(uniform):.1f}")
+```
+
+```text
+H(X) = 0.7219  H(Y) = 0.4690  H(X,Y) = 1.1738 bits
+H(Y | X = carrier), H(Y | X = non-carrier): [0.7219 0.3843]
+H(Y|X) = 0.4518  chain rule H(X) + H(Y|X) = 1.1738
+I(X;Y) = H(Y) - H(Y|X) = 0.0172 bits
+cross-entropy = 1.0397 nats = 1.5000 bits per base
+perplexity = exp(nats) = 2.828 = 2^bits = 2.828
+1 / geometric mean of P(true base) = 2.828
+know-nothing model: 1.3863 nats = 2.0 bits, perplexity 4.0
+```
+
+The chain rule holds, and $H(Y) - H(Y \mid X)$ reproduces the mutual information of 0.0172 bits found above. Note that $H(Y \mid X = \text{carrier}) = 0.72$ bits is *larger* than $H(Y) = 0.47$ bits; practice problem 8 asks why that is not a contradiction. The toy model's loss of 1.04 nats is 1.5 bits per base and a perplexity of 2.83, as in the hand calculation.
+
 ## Biomedical connection
 
 - **Non-coding variants and motifs.** Most genome-wide significant variants for common diseases, CAD included, lie outside protein-coding sequence. The core 9p21 CAD risk interval, for example, does not overlap the protein-coding sequence of any gene; it overlaps a long non-coding RNA (ANRIL, also called CDKN2B-AS1) and lies near the genes CDKN2A and CDKN2B. One way such variants could act is by changing a transcription-factor binding site in an enhancer. A PWM score difference between the two alleles ($\Delta S$ in bits) is a first, crude estimate of that effect. Deep models that predict regulatory activity from sequence generalise this idea, as you will see in [encoding DNA for machine learning](../../bioinformatics-algorithms/encoding-dna-for-machine-learning/) and [interpretability](../../deep-architectures-for-sequences/interpretability/).
@@ -362,6 +479,43 @@ Sum $\approx 0.0172$ bits.
 <summary>Answer</summary>
 
 The expected loss is $H(p) + D_{\mathrm{KL}}(p \Vert q)$. $H(p)$ is fixed, and $D_{\mathrm{KL}} \ge 0$ with equality only at $q = p$. Pushing $q$ towards 0 or 1 when the true probability is in between makes $D_{\mathrm{KL}}$ positive, so it increases the expected loss. The loss is minimised by reporting the true probability. (In practice, models can still become overconfident through overfitting to the training set, which is why we check calibration on held-out data.)
+
+</details>
+
+6. Two SNPs are in linkage disequilibrium. On a randomly chosen chromosome, let $X$ and $Y$ indicate the alternative allele at each. The joint probabilities are $P(1,1) = 0.4$, $P(1,0) = 0.1$, $P(0,1) = 0.1$ and $P(0,0) = 0.4$. Compute $H(X)$, $H(Y \mid X)$, $H(X, Y)$ and $I(X; Y)$.
+
+<details>
+<summary>Answer</summary>
+
+$P(X = 1) = 0.5$, so $H(X) = 1$ bit, and likewise $H(Y) = 1$ bit.
+
+Given either value of $X$, $Y$ matches it with probability $0.4/0.5 = 0.8$. So $H(Y \mid X) = -0.8\log_2 0.8 - 0.2\log_2 0.2 \approx 0.258 + 0.464 = 0.722$ bits.
+
+Chain rule: $H(X, Y) = 1 + 0.722 = 1.722$ bits, less than the 2 bits of two independent SNPs.
+
+$I(X; Y) = H(Y) - H(Y \mid X) = 1 - 0.722 = 0.278$ bits. Knowing one SNP removes about 28% of the uncertainty about the other.
+
+</details>
+
+7. A DNA language model with single-base tokens has a validation loss of 1.20 nats per base. (a) Convert the loss to bits and compute the perplexity. How does it compare with a model that knows nothing? (b) A second model reads non-overlapping 6-base tokens and reports a loss of 7.20 nats per token, a perplexity of about 1,339. Is it the worse model?
+
+<details>
+<summary>Answer</summary>
+
+(a) $1.20/\ln 2 \approx 1.73$ bits per base. Perplexity $= e^{1.20} \approx 3.32$, against 4 for a know-nothing model (2 bits, or 1.386 nats).
+
+(b) No. Per base its loss is $7.20/6 = 1.20$ nats, the same as the first model. Its perplexity of $e^{7.20} \approx 1{,}339$ counts choices among $4^6 = 4{,}096$ possible tokens, not among 4 bases. Per base it is $1339^{1/6} = e^{1.20} \approx 3.32$. Perplexities are comparable only for the same tokenisation.
+
+</details>
+
+8. In the carrier and disease example, $H(Y \mid X = \text{carrier}) \approx 0.722$ bits, which is more than $H(Y) \approx 0.469$ bits. Does this contradict the statement that knowing more never increases uncertainty?
+
+<details>
+<summary>Answer</summary>
+
+No. The statement $H(Y \mid X) \le H(Y)$ is about the **average** over the values of $X$. A particular observation can leave you less certain than before. Learning that someone is a carrier moves their risk from 10% to 20%, closer to a coin flip, so the entropy rises to 0.722 bits.
+
+But 80% of people are non-carriers, and learning that moves the risk down to 7.5% and the entropy down to 0.384 bits. The weighted average is $0.2 \times 0.722 + 0.8 \times 0.384 \approx 0.452$ bits, below 0.469.
 
 </details>
 

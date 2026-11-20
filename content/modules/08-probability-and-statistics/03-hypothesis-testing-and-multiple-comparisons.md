@@ -106,6 +106,34 @@ Under $H_0$ it approximately follows a $\chi^2$ distribution with 1 degree of fr
 > [!NOTE]
 > The allelic test assumes the two alleles in a person are independent (Hardy–Weinberg equilibrium). Modern GWAS instead use **logistic regression** of case status on dosage 0/1/2, with covariates such as age, sex and ancestry principal components. For a single SNP without covariates it gives a very similar answer. See [GWAS and polygenic risk scores](../../genomics-foundations/gwas-and-polygenic-risk-scores/).
 
+### Small counts: exact and permutation tests
+
+The $\chi^2$ distribution is only a large-sample approximation to the null distribution of $X^2$. A common rule of thumb asks for an expected count of at least 5 in every cell. Rare variants often break that rule, because the cells that count carriers stay small even in a large study. With small counts we do not need an approximation: we can work out the null distribution exactly.
+
+Take a table of people, with cases and controls in the rows and carriers and non-carriers in the columns, and hold its margins fixed. Under $H_0$ carrier status has nothing to do with case status, so every way of choosing which $C_1$ of the $N$ people are the carriers is equally likely. Counting the choices that put exactly $a$ carriers among the $R_1$ cases gives the **hypergeometric** distribution:
+
+$$
+P(O_{11} = a) = \frac{\binom{R_1}{a}\binom{R_2}{C_1 - a}}{\binom{N}{C_1}}.
+$$
+
+**Fisher's exact test** adds up these probabilities over every table that is no more probable than the one observed.
+
+**A small example.** Six cases and six controls are sequenced. Four people carry a rare variant, and all four are cases. The expected number of carriers in each group is 2, too few for the $\chi^2$ approximation. Under $H_0$ the probability that all four carriers are cases is
+
+$$
+\frac{\binom{6}{4}\binom{6}{0}}{\binom{12}{4}} = \frac{15}{495} \approx 0.030.
+$$
+
+The mirror-image table, with all four carriers among the controls, is equally probable, so the two-sided p-value is $30/495 \approx 0.061$. Pearson's statistic for the same table is $X^2 = 6$, which the $\chi^2$ approximation turns into $p \approx 0.014$, about four times too small.
+
+When there are too many tables to list, or the statistic is more complicated, we sample instead. A **permutation test** shuffles the case and control labels $B$ times, recomputes the statistic $T^*$ after each shuffle, and reports
+
+$$
+p = \frac{1 + \#\{T^* \ge t_{\text{obs}}\}}{1 + B}.
+$$
+
+The added 1 counts the observed labelling, which is itself one of the equally likely arrangements. Fisher's test is a permutation test in which every arrangement has been counted. The one assumption is that the labels are **exchangeable** under $H_0$. Relatives and ancestry structure in the sample break it, just as they break the other tests. The same shuffling idea returns as permutation importance in [trees, forests and boosting](../../classical-machine-learning/trees-forests-and-boosting/).
+
 ## Multiple testing
 
 ### The problem
@@ -156,6 +184,17 @@ where $R$ is the number of rejections and $V$ the number of false ones.
 The threshold grows with rank: the smallest p-value faces the Bonferroni bar $q/m$, the second $2q/m$, and so on. Note step 2 asks for the **largest** such $k$: a p-value above its own line can still be rejected if a later one dips below its line.
 
 **Intuition.** If all $m$ nulls were true, p-values would be uniform, so about $m \cdot t$ of them would fall below any threshold $t$. If we reject the $k$ smallest using threshold $t = kq/m$, the expected number of false discoveries is at most $m \cdot kq/m = kq$, out of $k$ discoveries: a fraction $q$.
+
+### Checking the null across many tests: genomic inflation
+
+Both corrections assume that each individual p-value is valid. With a million tests we can check that assumption. Most variants are null or nearly so, and the bulk of the test statistics should look like draws from $\chi^2_1$. The **median** summarises the bulk well, because a few true associations with huge statistics barely move it. For a standard normal $Z$, half of all draws have $|Z| < 0.67449$, so the median of $Z^2$ is $0.67449^2 \approx 0.4549$.
+
+> [!IMPORTANT]
+> **Genomic inflation factor.**
+> $$\lambda_{GC} = \frac{\text{median of the observed } \chi^2_1 \text{ statistics}}{0.4549}$$
+> Valid tests of mostly null variants give $\lambda_{GC} \approx 1$.
+
+A GWAS whose median statistic is 0.50 has $\lambda_{GC} = 0.50/0.4549 \approx 1.10$. Its typical statistic is about 10% too large, so its small p-values are too small. Something other than chance is shifting all the tests at once. [GWAS and polygenic risk scores](../../genomics-foundations/gwas-and-polygenic-risk-scores/) covers the usual causes and the remedy.
 
 ## Worked example
 
@@ -329,6 +368,67 @@ matches scipy: True
 
 Without correction, 83% of "hits" are false. Bonferroni makes no false calls but misses 62 of the 100 real effects. BH finds more than twice as many real effects with a false discovery proportion close to the 5% target.
 
+The third snippet works through the small table of the exact-test example in three ways, then computes $\lambda_{GC}$ for simulated sets of GWAS statistics.
+
+```python
+import numpy as np
+from math import comb
+from scipy import stats
+
+# --- A small table: 4 of 6 cases carry a rare variant, 0 of 6 controls ---
+table = np.array([[4, 2],
+                  [0, 6]])
+n_case, n_ctrl = table.sum(axis=1)
+n_carrier = table[:, 0].sum()
+n = table.sum()
+
+# Exact null distribution of "carriers among cases" with the margins fixed (hypergeometric)
+pmf = np.array([comb(n_case, a) * comb(n_ctrl, n_carrier - a) / comb(n, n_carrier)
+                for a in range(n_carrier + 1)])
+print("P(a carriers among cases), a = 0..4:", pmf.round(4))
+a_obs = table[0, 0]
+p_one = pmf[a_obs:].sum()
+p_two = pmf[pmf <= pmf[a_obs] * (1 + 1e-9)].sum()       # all tables as improbable as observed
+print(f"exact p: one-sided {p_one:.4f}, two-sided {p_two:.4f}")
+print(f"scipy fisher_exact two-sided: {stats.fisher_exact(table)[1]:.4f}")
+print(f"chi-square approximation    : {stats.chi2_contingency(table, correction=False)[1]:.4f}")
+
+# Permutation test: shuffle the case/control labels, recount carriers among "cases"
+rng = np.random.default_rng(2)
+carrier = np.array([1] * n_carrier + [0] * (n - n_carrier))
+B = 100_000
+shuffled = rng.permuted(np.tile(carrier, (B, 1)), axis=1)     # (B, 12): one shuffle per row
+a_perm = shuffled[:, :n_case].sum(axis=1)                      # first 6 people play the cases
+expected = n_case * n_carrier / n
+extreme = np.abs(a_perm - expected) >= abs(a_obs - expected)
+print(f"permutation p (two-sided, B={B}): {(1 + extreme.sum()) / (1 + B):.4f}")
+
+# --- Genomic inflation factor on simulated GWAS z-scores ---
+m = 200_000
+z_null = rng.normal(size=m)
+z_inflated = z_null * np.sqrt(1.2)                  # every statistic 20% too large
+z_signal = z_null.copy()
+z_signal[:200] += 6.0                               # 200 strong true associations, no inflation
+median_chi2 = stats.chi2.ppf(0.5, df=1)
+print(f"median of chi-square(1): {median_chi2:.4f} = {stats.norm.ppf(0.75):.5f}^2")
+for name, z in [("null", z_null), ("inflated", z_inflated), ("null + true signals", z_signal)]:
+    print(f"{name:20s} lambda_GC = {np.median(z**2) / median_chi2:.3f}   mean chi2 = {np.mean(z**2):.3f}")
+```
+
+```text
+P(a carriers among cases), a = 0..4: [0.0303 0.2424 0.4545 0.2424 0.0303]
+exact p: one-sided 0.0303, two-sided 0.0606
+scipy fisher_exact two-sided: 0.0606
+chi-square approximation    : 0.0143
+permutation p (two-sided, B=100000): 0.0589
+median of chi-square(1): 0.4549 = 0.67449^2
+null                 lambda_GC = 1.001   mean chi2 = 0.998
+inflated             lambda_GC = 1.202   mean chi2 = 1.197
+null + true signals  lambda_GC = 1.004   mean chi2 = 1.034
+```
+
+The exact p-value and the permutation estimate agree up to Monte Carlo noise, and the $\chi^2$ approximation is about four times too small. In the second part, making every statistic 20% too large gives $\lambda_{GC} \approx 1.20$. Adding 200 strong true associations to 200,000 null tests raises the mean statistic but leaves the median, and so $\lambda_{GC}$, almost untouched.
+
 ## Biomedical connection
 
 The first wave of CAD GWAS in 2007 found the **9p21** locus at genome-wide significance in several independent studies at once, and that replication is part of why it is trusted (see [genetics of heart disease](../../genomics-foundations/genetics-of-heart-disease/)). Since then, sample sizes have grown into the hundreds of thousands, and the number of genome-wide significant CAD loci has grown into the hundreds. Most have small odds ratios, typically well under 1.2 per allele, which is exactly why such large samples are needed.
@@ -390,6 +490,41 @@ Thresholds $kq/m = 0.02, 0.04, 0.06, 0.08, 0.10$. Compare: $0.002 \le 0.02$ yes;
 <summary>Answer</summary>
 
 50% power means $\theta/\text{SE} = z_{\text{crit}} = 5.45$. 80% power needs $\theta/\text{SE} = 5.45 + 0.84 = 6.29$. The SE must shrink by a factor $5.45/6.29 \approx 0.866$, and since $\text{SE} \propto 1/\sqrt{n}$, $n$ must grow by $(6.29/5.45)^2 \approx 1.33$, about 33% more participants.
+
+</details>
+
+6. A rare variant is carried by 6 of 20 study participants: 5 of the 10 cases and 1 of the 10 controls. (a) What is the expected number of carriers in each group, and why should you not trust the chi-square test here? (b) Compute the exact one-sided p-value: the probability under $H_0$ of 5 or more carriers among the cases. (c) Pearson's test gives $X^2 = 3.81$ and $p \approx 0.051$. Compare it with the two-sided exact p-value.
+
+<details>
+<summary>Answer</summary>
+
+(a) $10 \times 6/20 = 3$ carriers expected in each group. That is below 5, so the $\chi^2$ distribution is a poor approximation to the null distribution of $X^2$.
+
+(b) With the margins fixed, $P(5) = \dfrac{\binom{10}{5}\binom{10}{1}}{\binom{20}{6}} = \dfrac{252 \times 10}{38{,}760} \approx 0.0650$ and $P(6) = \dfrac{\binom{10}{6}\binom{10}{0}}{\binom{20}{6}} = \dfrac{210}{38{,}760} \approx 0.0054$. One-sided $p = 2{,}730/38{,}760 \approx 0.070$.
+
+(c) The groups are the same size, so the mirror-image tables (1 or 0 carriers among the cases) have the same probabilities, and the two-sided exact p-value is $2 \times 0.070 \approx 0.141$. That is nearly three times the chi-square value of 0.051. The approximation overstates the evidence.
+
+</details>
+
+7. A GWAS reports a median $\chi^2_1$ statistic of 0.546 across all variants. (a) Compute $\lambda_{GC}$. (b) Its top variant has $\chi^2 = 30.0$ ($p = 4.3 \times 10^{-8}$). One simple correction divides every statistic by $\lambda_{GC}$. Is the variant still genome-wide significant afterwards?
+
+<details>
+<summary>Answer</summary>
+
+(a) $\lambda_{GC} = 0.546/0.4549 \approx 1.20$. The typical statistic is 20% larger than valid tests of null variants would give.
+
+(b) $30.0/1.20 = 25.0$. Genome-wide significance needs $|z| > 5.45$, that is $\chi^2 > 5.45^2 \approx 29.7$. The corrected statistic of 25.0 ($p \approx 5.7 \times 10^{-7}$) falls short, so the variant is no longer genome-wide significant.
+
+</details>
+
+8. You run a permutation test with $B = 999$ shuffles, and none of the shuffled statistics is as large as the observed one. What p-value do you report, and why not zero? Roughly how many shuffles would a single variant need before a permutation test could show $p < 5 \times 10^{-8}$?
+
+<details>
+<summary>Answer</summary>
+
+Report $p = (1 + 0)/(1 + 999) = 0.001$. A p-value of zero would claim that the observed data are impossible under $H_0$. They are not: the observed labelling is itself one of the equally likely arrangements, which is what the added 1 counts.
+
+The smallest p-value that $B$ shuffles can produce is $1/(B + 1)$. Getting below $5 \times 10^{-8}$ needs $B + 1 > 1/(5 \times 10^{-8}) = 2 \times 10^{7}$: more than twenty million shuffles for one variant, and a GWAS has millions of variants. This is one reason GWAS use the normal and chi-square approximations for common variants and keep exact or permutation methods for small counts.
 
 </details>
 

@@ -105,6 +105,49 @@ The quantity $\sigma/\sqrt{n}$ is the **standard error** of the mean. Two conseq
 
 The binomial is itself a sum, so $\text{Bin}(n,p) \approx \mathcal{N}(np, np(1-p))$ when $np$ and $n(1-p)$ are both reasonably large (a common rule of thumb is at least 10).
 
+### Covariance, correlation and sums of dependent variables
+
+The CLT describes the shape of a sum. For its variance we have so far assumed independent terms. Neighbouring variants on a chromosome are not independent, and neither are LDL cholesterol and blood pressure. To add such variables up we must measure how they move together.
+
+The **covariance** of $X$ and $Y$ is the average product of their deviations from their means:
+
+$$
+\operatorname{Cov}(X, Y) = \mathbb{E}\big[(X - \mathbb{E}X)(Y - \mathbb{E}Y)\big] = \mathbb{E}[XY] - \mathbb{E}[X]\,\mathbb{E}[Y].
+$$
+
+It is positive when $X$ and $Y$ tend to be above their means together and negative when one tends to be high while the other is low. If $X$ and $Y$ are independent then $\mathbb{E}[XY] = \mathbb{E}[X]\,\mathbb{E}[Y]$, so their covariance is zero. The converse fails: zero covariance rules out only a *linear* relationship. Covariance expands over sums like a product, $\operatorname{Cov}(X + X', Y) = \operatorname{Cov}(X, Y) + \operatorname{Cov}(X', Y)$.
+
+Covariance carries the units of $X$ times the units of $Y$. Dividing by both standard deviations gives the unit-free **correlation**, which always lies between $-1$ and $1$:
+
+$$
+\rho = \frac{\operatorname{Cov}(X, Y)}{\sqrt{\operatorname{Var}(X)\operatorname{Var}(Y)}}.
+$$
+
+**Variance of a sum.** Write $\tilde X = X - \mathbb{E}X$ and $\tilde Y = Y - \mathbb{E}Y$. Then
+
+$$
+\operatorname{Var}(X + Y) = \mathbb{E}\big[(\tilde X + \tilde Y)^2\big] = \mathbb{E}[\tilde X^2] + \mathbb{E}[\tilde Y^2] + 2\,\mathbb{E}[\tilde X \tilde Y] = \operatorname{Var}(X) + \operatorname{Var}(Y) + 2\operatorname{Cov}(X, Y).
+$$
+
+Expanding the square of a weighted sum of many variables in the same way gives the general rule.
+
+> [!IMPORTANT]
+> **Variance of a weighted sum.**
+> $$\operatorname{Var}\Big(\sum_j w_j X_j\Big) = \sum_j w_j^2 \operatorname{Var}(X_j) + 2\sum_{j<k} w_j w_k \operatorname{Cov}(X_j, X_k) = \mathbf{w}^\top \boldsymbol\Sigma\,\mathbf{w},$$
+> where $\boldsymbol\Sigma$ is the **covariance matrix**, with entries $\Sigma_{jk} = \operatorname{Cov}(X_j, X_k)$ and the variances on its diagonal.
+
+With independent terms every covariance is zero and the earlier rule comes back. You met the sample version of $\boldsymbol\Sigma$ in [eigenvectors, SVD and PCA](../../linear-algebra/eigenvectors-svd-and-pca/).
+
+**A small example** (illustrative numbers). Take two nearby SNPs. On a randomly chosen chromosome, let $X = 1$ if it carries the alternative allele at the first SNP and $Y = 1$ if it carries the alternative allele at the second. Each allele has frequency 0.5, and 40% of chromosomes carry both. Then $\mathbb{E}[XY] = P(X = 1, Y = 1) = 0.4$, so
+
+$$
+\operatorname{Cov}(X, Y) = 0.4 - 0.5 \times 0.5 = 0.15, \qquad \rho = \frac{0.15}{\sqrt{0.25 \times 0.25}} = 0.6.
+$$
+
+The number of alternative alleles on the chromosome across both sites, $X + Y$, has variance $0.25 + 0.25 + 2 \times 0.15 = 0.80$, not the $0.50$ that independence would give. Geneticists call this covariance the linkage disequilibrium coefficient $D$ and report $\rho^2$ (here 0.36) as $r^2$; see [DNA, genes and variation](../../genomics-foundations/dna-genes-and-variation/).
+
+A polygenic score is a weighted sum of dosages, so its variance is $\mathbf{w}^\top \boldsymbol\Sigma\,\mathbf{w}$, and linkage disequilibrium fills $\boldsymbol\Sigma$ with non-zero off-diagonal entries. The same formula explains, in [trees, forests and boosting](../../classical-machine-learning/trees-forests-and-boosting/), why averaging correlated trees reduces variance less than averaging independent ones.
+
 ## Maximum likelihood estimation
 
 ### The likelihood function
@@ -182,6 +225,31 @@ In regression, a model predicts $\hat y_i = f_{\mathbf{w}}(\mathbf{x}_i)$ and we
 
 The [loss functions](../../calculus-and-optimization/loss-functions/) chapter uses these losses. The [information theory](../../probability-and-statistics/information-theory/) chapter explains the name "cross-entropy".
 
+### Priors as pseudo-counts: the MAP estimate
+
+The MLE trusts the data completely, and a small sample can make it extreme. Sequence 10 chromosomes, find no copy of an allele, and the MLE is $\hat p = 0/10 = 0$. The fitted model now says the allele cannot exist, and one later sighting would have likelihood zero. We usually know better than that before we look at the data. Bayes' theorem lets us say so, by treating $p$ itself as uncertain:
+
+$$
+P(p \mid \text{data}) \propto P(\text{data} \mid p) \times P(p), \qquad \text{posterior} \propto \text{likelihood} \times \text{prior}.
+$$
+
+A convenient family of priors for a probability is the **Beta distribution** $\text{Beta}(a, b)$, whose density on $[0, 1]$ is proportional to $p^{a-1}(1-p)^{b-1}$. With $a = b = 1$ it is flat. Larger $a$ and $b$ concentrate it around $a/(a+b)$. Multiply it by the likelihood of $k$ alternative alleles on $n$ chromosomes:
+
+$$
+P(p \mid k) \propto p^{k}(1-p)^{n-k} \times p^{a-1}(1-p)^{b-1} = p^{k+a-1}(1-p)^{n-k+b-1}.
+$$
+
+The posterior is again a Beta distribution, $\text{Beta}(a + k,\ b + n - k)$. A prior that keeps its form in this way is called **conjugate** to the likelihood. The **maximum a posteriori** (MAP) estimate is the peak of the posterior. The log-posterior $(k + a - 1)\log p + (n - k + b - 1)\log(1-p)$ has the same shape as the Bernoulli log-likelihood, with $k$ replaced by $k + a - 1$ and $n - k$ by $n - k + b - 1$, so the same calculus applies.
+
+> [!IMPORTANT]
+> **MAP estimate under a $\text{Beta}(a, b)$ prior** (for $a, b \ge 1$):
+> $$\hat p_{\text{MAP}} = \frac{k + a - 1}{n + a + b - 2}.$$
+> The prior acts like $a - 1$ extra successes and $b - 1$ extra failures seen before the data. These are **pseudo-counts**.
+
+The flat prior $\text{Beta}(1, 1)$ adds no pseudo-counts, and the MAP estimate equals the MLE. With $\text{Beta}(2, 2)$, one pseudo-count of each allele, the sample with 0 copies in 10 gives $(0 + 1)/(10 + 2) \approx 0.083$: small, but not zero. The pseudocount added to motif counts in [information theory](../../probability-and-statistics/information-theory/) is the same device with four outcomes in place of two.
+
+Two lessons carry forward. First, **the prior fades as data arrive**: the pseudo-counts stay fixed while $n$ grows, so with enough data the MAP estimate and the MLE agree. Second, **a prior is a penalty on the loss**. Taking logs, $\log(\text{posterior}) = \log(\text{likelihood}) + \log(\text{prior}) + \text{constant}$, so maximising the posterior is minimising the negative log-likelihood plus a penalty $-\log(\text{prior})$. A loss with such a penalty is called **regularised**. In [regularization](../../classical-machine-learning/regularization-and-the-bias-variance-tradeoff/) a normal prior on regression weights becomes the ridge penalty, and [GWAS and polygenic risk scores](../../genomics-foundations/gwas-and-polygenic-risk-scores/) uses a normal prior to shrink noisy effect estimates.
+
 ## Worked example
 
 **(a) Genotype probabilities.** A variant has alternative-allele frequency $p = 0.3$. Under Hardy–Weinberg, the dosage is $\text{Bin}(2, 0.3)$:
@@ -206,6 +274,20 @@ About 0.3% of bases would have too few reads to call a genotype confidently. At 
 - $\ell(0.5) = 10 \ln 0.5 \approx -6.931$
 
 So $p = 0.3$ makes the data $e^{-6.109 + 6.931} = e^{0.822} \approx 2.3$ times more probable than $p = 0.5$. That ratio is a **likelihood ratio**, the same idea as in [Bayes' theorem](../../probability-and-statistics/probability-and-bayes-theorem/).
+
+**(d) Variance of a score when the SNPs are in LD.** A toy score adds two SNPs, $S = 0.2\,G_1 + 0.1\,G_2$. Both have allele frequency 0.5, so each dosage has variance $2 \times 0.5 \times 0.5 = 0.5$. If the SNPs were independent,
+
+$$
+\operatorname{Var}(S) = 0.2^2 \times 0.5 + 0.1^2 \times 0.5 = 0.02 + 0.005 = 0.025.
+$$
+
+Now put them in LD as in the covariance example: on each chromosome the two allele indicators have covariance 0.15. A dosage is the sum over two chromosomes inherited independently, so the covariances add, $\operatorname{Cov}(G_1, G_2) = 2 \times 0.15 = 0.30$, and
+
+$$
+\operatorname{Var}(S) = 0.025 + 2 \times 0.2 \times 0.1 \times 0.30 = 0.025 + 0.012 = 0.037.
+$$
+
+LD raises the variance by 48%. If the second weight were $-0.1$, the cross term would change sign and the variance would fall to $0.025 - 0.012 = 0.013$.
 
 ## In code
 
@@ -297,6 +379,59 @@ mu_hat 3.372 sigma_hat 0.886 | unbiased sd (n-1) 0.887
 argmin NLL 3.372 | argmin MSE 3.372
 ```
 
+The last snippet simulates the two SNPs in LD from worked example (d) and checks the variance of the score against $\mathbf{w}^\top \boldsymbol\Sigma\,\mathbf{w}$. It then tabulates the MAP estimate for growing samples under two priors: $\text{Beta}(2, 2)$, and $\text{Beta}(2, 18)$, which encodes a belief that the variant is uncommon (one pseudo-count of the alternative allele, 17 of the reference).
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(5)
+
+# --- Two SNPs in LD. Each chromosome carries (X, Y) = (1,1), (1,0), (0,1) or (0,0) ---
+hap_probs = [0.4, 0.1, 0.1, 0.4]
+n_people = 200_000
+hap = rng.choice(4, size=(n_people, 2), p=hap_probs)  # (people, 2 chromosomes)
+X = (hap <= 1).astype(float)                          # alt allele at SNP 1, shape (n_people, 2)
+Y = (hap % 2 == 0).astype(float)                      # alt allele at SNP 2, shape (n_people, 2)
+print("per chromosome: cov(X, Y) =", np.cov(X[:, 0], Y[:, 0])[0, 1].round(3),
+      "| correlation =", np.corrcoef(X[:, 0], Y[:, 0])[0, 1].round(3))
+
+G = np.stack([X.sum(axis=1), Y.sum(axis=1)], axis=1)  # dosages, shape (n_people, 2)
+Sigma = np.cov(G, rowvar=False)                       # covariance matrix, shape (2, 2)
+print("dosage covariance matrix:\n", Sigma.round(3))
+
+w = np.array([0.2, 0.1])                              # weights of the toy score
+score = G @ w                                         # shape (n_people,)
+print("Var(score): simulated", score.var(ddof=1).round(4),
+      "| w' Sigma w", (w @ Sigma @ w).round(4),
+      "| ignoring covariance", (w**2 * np.diag(Sigma)).sum().round(4))
+
+# --- MAP estimate of an allele frequency under a Beta(a, b) prior ---
+def map_estimate(k, n, a, b):
+    return (k + a - 1) / (n + a + b - 2)
+
+grid = np.linspace(0.0001, 0.9999, 9999)
+print("  k     n    MLE   MAP Beta(2,2)   MAP Beta(2,18)   grid search, Beta(2,18)")
+for k, n in [(0, 10), (3, 10), (30, 100), (300, 1000)]:
+    log_post = (k + 2 - 1) * np.log(grid) + (n - k + 18 - 1) * np.log(1 - grid)
+    print(f"{k:3d} {n:5d}  {k / n:.3f}       {map_estimate(k, n, 2, 2):.3f}"
+          f"            {map_estimate(k, n, 2, 18):.3f}        {grid[np.argmax(log_post)]:.3f}")
+```
+
+```text
+per chromosome: cov(X, Y) = 0.15 | correlation = 0.599
+dosage covariance matrix:
+ [[0.499 0.3  ]
+ [0.3   0.501]]
+Var(score): simulated 0.0369 | w' Sigma w 0.0369 | ignoring covariance 0.025
+  k     n    MLE   MAP Beta(2,2)   MAP Beta(2,18)   grid search, Beta(2,18)
+  0    10  0.000       0.083            0.036        0.036
+  3    10  0.300       0.333            0.143        0.143
+ 30   100  0.300       0.304            0.263        0.263
+300  1000  0.300       0.300            0.296        0.296
+```
+
+The simulated covariances match the hand calculation (0.15 per chromosome, 0.30 between dosages), and the score's variance is 0.037, not the 0.025 that ignoring LD would give. In the table, both priors pull the estimate at $n = 10$, the informative $\text{Beta}(2, 18)$ much harder, and a grid search over the log-posterior confirms the closed form. By $n = 1{,}000$ all the estimates have nearly converged.
+
 ## Biomedical connection
 
 Each distribution in this chapter shows up in the DNA-to-heart-disease pipeline:
@@ -355,6 +490,45 @@ Mean $30$, variance $100 \times 0.3 \times 0.7 = 21$, sd $\approx 4.58$. $P(K \g
 $\mathbb{E}[S] = 0.2(2 \times 0.5) + 0.1(2 \times 0.2) = 0.2 + 0.04 = 0.24$.
 
 $\operatorname{Var}(S) = 0.2^2 \times 2(0.5)(0.5) + 0.1^2 \times 2(0.2)(0.8) = 0.04 \times 0.5 + 0.01 \times 0.32 = 0.0232$.
+
+</details>
+
+6. Now suppose the two SNPs of problem 5 are in LD: 18% of chromosomes carry the alternative allele at both. Find the covariance and the correlation of the two allele indicators on a chromosome, then $\operatorname{Cov}(G_1, G_2)$ and $\operatorname{Var}(S)$.
+
+<details>
+<summary>Answer</summary>
+
+Per chromosome: $\operatorname{Cov}(X, Y) = 0.18 - 0.5 \times 0.2 = 0.08$. The variances are $0.5 \times 0.5 = 0.25$ and $0.2 \times 0.8 = 0.16$, so $\rho = 0.08/\sqrt{0.25 \times 0.16} = 0.08/0.2 = 0.4$.
+
+Each dosage sums two chromosomes inherited independently, so $\operatorname{Cov}(G_1, G_2) = 2 \times 0.08 = 0.16$.
+
+$\operatorname{Var}(S) = 0.0232 + 2 \times 0.2 \times 0.1 \times 0.16 = 0.0232 + 0.0064 = 0.0296$, about 28% more than under independence.
+
+</details>
+
+7. Sequencing 20 chromosomes finds no copy of a variant. (a) What is the MLE of its frequency? (b) What is the MAP estimate under a $\text{Beta}(2, 18)$ prior? (c) Repeat (b) for no copies in 2,000 chromosomes. What does the comparison show?
+
+<details>
+<summary>Answer</summary>
+
+(a) $\hat p = 0/20 = 0$.
+
+(b) $\hat p_{\text{MAP}} = \dfrac{0 + 2 - 1}{20 + 2 + 18 - 2} = \dfrac{1}{38} \approx 0.026$.
+
+(c) $\dfrac{1}{2000 + 18} = \dfrac{1}{2018} \approx 0.0005$.
+
+The prior contributes 18 pseudo-observations. Against 20 real ones it matters about as much as the data, and it keeps the estimate away from an implausible zero. Against 2,000 real ones it is negligible, and the estimate is close to the MLE.
+
+</details>
+
+8. A score uses 100 SNPs, all with weight $\beta$ and dosage variance $v$. They fall into 10 LD blocks of 10. Within a block the dosages are perfectly correlated, and different blocks are independent. A colleague computes the variance of the score as $\sum_j \beta^2 v = 100\,\beta^2 v$. What is the true variance, and what goes wrong with a z-score built on the colleague's figure?
+
+<details>
+<summary>Answer</summary>
+
+The colleague's formula drops the covariances. Within a block every pair of SNPs has correlation 1, and so covariance $v$. Each block has $10 \times 9 = 90$ ordered pairs, so the ten blocks add cross terms of $10 \times 90 \times \beta^2 v = 900\,\beta^2 v$. The true variance is $100\,\beta^2 v + 900\,\beta^2 v = 1000\,\beta^2 v$, ten times the colleague's figure.
+
+The colleague's standard deviation is too small by a factor $\sqrt{10} \approx 3.16$, so every z-score is 3.16 times too extreme. The score itself also counts each block's signal ten times, which is why polygenic scores prune or reweight SNPs in LD (see [GWAS and polygenic risk scores](../../genomics-foundations/gwas-and-polygenic-risk-scores/)).
 
 </details>
 

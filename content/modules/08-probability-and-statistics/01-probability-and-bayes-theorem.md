@@ -146,6 +146,51 @@ $$
 
 If several pieces of evidence are **conditionally independent given $D$**, you can add their log-LRs one after another. That is exactly the structure of **logistic regression**, where each feature adds a term to the log-odds. You will meet it in [linear and logistic regression](../../classical-machine-learning/linear-and-logistic-regression/).
 
+### Sequential updating: two tests in a row
+
+Evidence rarely arrives all at once: a screening assay comes back positive, then a confirmatory assay is run. In the odds form, **the posterior after the first result is the prior for the second**.
+
+To find the second multiplier, apply the odds form inside the world where the first result $T_1$ has already happened, so that every probability carries an extra "given $T_1$":
+
+$$
+\frac{P(D \mid T_1, T_2)}{P(D^c \mid T_1, T_2)} = \frac{P(T_2 \mid D, T_1)}{P(T_2 \mid D^c, T_1)} \times \frac{P(D \mid T_1)}{P(D^c \mid T_1)}.
+$$
+
+This is always true. The catch is the first factor. It is the likelihood ratio of test 2 *among people who already have result $T_1$*, and a validation study of test 2 alone does not report that. It reduces to the ordinary likelihood ratio of test 2 only if the two results are conditionally independent given the true status, so that $P(T_2 \mid D, T_1) = P(T_2 \mid D)$ and likewise for $D^c$.
+
+> [!IMPORTANT]
+> **Sequential updating.** If the results are conditionally independent given $D$ and given $D^c$:
+> $$\text{posterior odds} = \text{LR}_2 \times \text{LR}_1 \times \text{prior odds}.$$
+> The order of the results does not matter, and the rule extends to any number of them.
+
+**A small example** (illustrative numbers). A condition has prevalence 1%, so the prior odds are $1/99$. Test A has sensitivity 90% and specificity 95%, so $\text{LR}^+_A = 0.90/0.05 = 18$. Test B has sensitivity 80% and specificity 90%, so $\text{LR}^+_B = 0.80/0.10 = 8$. Both come back positive.
+
+- After A: odds $= 18/99 \approx 0.182$, probability $0.182/1.182 \approx 0.154$.
+- After B, starting from those odds: $0.182 \times 8 \approx 1.455$, probability $1.455/2.455 \approx 0.593$.
+
+Two positives move a 1% prior to 59%, *if* the tests make their errors independently.
+
+### Conditional independence is not independence
+
+Tests A and B above are conditionally independent given the true status, yet overall they are strongly dependent. By the law of total probability, $P(A^+) = 0.0585$ and $P(B^+) = 0.107$, while
+
+$$
+P(A^+ \cap B^+) = (0.90 \times 0.80) \times 0.01 + (0.05 \times 0.10) \times 0.99 = 0.01215,
+$$
+
+about twice the product $0.0585 \times 0.107 \approx 0.0063$ that independence would need. A positive A makes the condition more likely, and the condition makes a positive B more likely. The tests are linked *through* $D$, and only through $D$: once the true status is known, A's result says nothing more about B's.
+
+That assumption defines the **naive Bayes** model. If findings $x_1, \dots, x_n$ are conditionally independent given the class, the joint likelihood factorises,
+
+$$
+P(x_1, \dots, x_n \mid D) = \prod_{i=1}^{n} P(x_i \mid D), \qquad\text{so}\qquad \text{posterior odds} = \text{prior odds} \times \prod_{i=1}^{n} \text{LR}_i.
+$$
+
+A full table of $n$ yes/no findings has $2^n$ rows for each class, while the factorised model needs only $n$ numbers for each class. Later chapters use the same factorisation whenever they multiply per-item likelihoods: the reads covering a site, given the genotype, in [sequencing data](../../genomics-foundations/sequencing-data/); the pieces of evidence for classifying a variant in [genetics of heart disease](../../genomics-foundations/genetics-of-heart-disease/); and the positions of a motif in [information theory](../../probability-and-statistics/information-theory/).
+
+> [!WARNING]
+> The model is called "naive" because real findings usually share causes other than the condition itself. Multiplying their likelihood ratios then counts the same evidence twice, and the posterior comes out overconfident. Polygenic scores meet the same double counting when they add up correlated variants, as you will see in [GWAS and polygenic risk scores](../../genomics-foundations/gwas-and-polygenic-risk-scores/).
+
 ## Worked example
 
 **Problem.** A laboratory offers a genetic test for a pathogenic variant. The test has sensitivity 99% and specificity 99%. Compare what a positive result means in two settings:
@@ -189,6 +234,21 @@ Same test, same "99% accuracy", but now a positive result is right 96% of the ti
 
 > [!NOTE]
 > Real clinical sequencing of a known variant usually has specificity much higher than 99%. The numbers here are chosen to make the arithmetic clear. The lesson about prevalence holds for any test whose false-positive rate is not tiny compared with the prevalence.
+
+### A second example: two tests that share a weakness
+
+**Problem.** Take tests A and B from the sequential-updating example: prevalence 1%, $\text{LR}^+$ of 18 and 8. Now suppose their false positives are not independent. Both assays cross-react with the same harmless look-alike sequence, so among healthy people who are positive on A, 60% are also positive on B, not 10%. Among people with the condition the two tests still make their errors independently. What is the probability of the condition after two positive results?
+
+**Step 1: natural frequencies.** Of 100,000 people, 1,000 have the condition and 99,000 do not.
+
+- With the condition and positive on both: $0.90 \times 0.80 \times 1{,}000 = 720$.
+- Without it and positive on A: $0.05 \times 99{,}000 = 4{,}950$. Of those, positive on B as well: $0.60 \times 4{,}950 = 2{,}970$.
+
+**Step 2: the right answer.** $P(D \mid A^+, B^+) = 720/(720 + 2{,}970) = 720/3{,}690 \approx 0.195$.
+
+**Step 3: the naive answer.** With independent false positives, only $0.10 \times 4{,}950 = 495$ healthy people would be positive twice, giving $720/1{,}215 \approx 0.593$. That is the figure we got by multiplying the two likelihood ratios. Here it overstates the probability about threefold.
+
+**Step 4: the odds form still works, with the right ratio.** Among A-positives, B is positive in 80% of people with the condition and 60% of people without it. The likelihood ratio of B *given A positive* is $0.80/0.60 \approx 1.33$, not 8. Posterior odds $= 1.33 \times 18/99 \approx 0.242$, and probability $= 0.242/1.242 \approx 0.195$. ✓
 
 ## In code
 
@@ -240,6 +300,47 @@ simulated NPV: 0.99996
 ```
 
 The likelihood ratios do not move with prevalence, but PPV climbs from 28% to 96%. The simulated PPV (0.288) differs slightly from 0.284 because only about 4,000 carriers were drawn, so there is sampling noise. You will learn to quantify that noise in [distributions and likelihood](../../probability-and-statistics/distributions-and-likelihood/).
+
+The second snippet simulates the two tests twice: once with conditionally independent errors, once with the shared false positives of the second worked example. Each run measures the likelihood ratios from the simulated people and compares three ways of getting $P(D \mid A^+, B^+)$.
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(11)
+n, prev = 2_000_000, 0.01
+se_a, sp_a = 0.90, 0.95          # test A
+se_b, sp_b = 0.80, 0.90          # test B
+
+def simulate(fp_b_if_a_pos):
+    """Both tests on n people. fp_b_if_a_pos = P(B+ | A+, healthy)."""
+    d = rng.random(n) < prev
+    a = rng.random(n) < np.where(d, se_a, 1 - sp_a)
+    # B's false-positive rate among A-negatives keeps its overall rate at 1 - sp_b
+    fp_b_if_a_neg = ((1 - sp_b) - (1 - sp_a) * fp_b_if_a_pos) / sp_a
+    b = rng.random(n) < np.where(d, se_b, np.where(a, fp_b_if_a_pos, fp_b_if_a_neg))
+    return d, a, b
+
+for label, fp in [("conditionally independent", 1 - sp_b), ("shared false positives", 0.60)]:
+    d, a, b = simulate(fp)                                # disease, A positive, B positive
+    prior_odds = d.mean() / (~d).mean()
+    lr_a = a[d].mean() / a[~d].mean()                     # each test measured on its own
+    lr_b = b[d].mean() / b[~d].mean()
+    lr_b_given_a = b[d & a].mean() / b[~d & a].mean()     # B among the A-positives only
+    naive = prior_odds * lr_a * lr_b
+    chained = prior_odds * lr_a * lr_b_given_a
+    print(f"{label}: LR_A = {lr_a:.1f}, LR_B = {lr_b:.1f}, LR_B given A+ = {lr_b_given_a:.2f}")
+    print(f"  P(D | A+, B+): LR_A x LR_B -> {naive / (1 + naive):.3f} | "
+          f"LR_A x LR_B given A+ -> {chained / (1 + chained):.3f} | counted -> {d[a & b].mean():.3f}")
+```
+
+```text
+conditionally independent: LR_A = 18.0, LR_B = 8.0, LR_B given A+ = 8.09
+  P(D | A+, B+): LR_A x LR_B -> 0.593 | LR_A x LR_B given A+ -> 0.596 | counted -> 0.596
+shared false positives: LR_A = 18.0, LR_B = 8.0, LR_B given A+ = 1.33
+  P(D | A+, B+): LR_A x LR_B -> 0.594 | LR_A x LR_B given A+ -> 0.196 | counted -> 0.196
+```
+
+Each test, measured on its own, has the same likelihood ratio in both runs, so multiplying them gives about 0.59 both times. A validation study of B alone could not tell the two situations apart. In the first run 0.59 is right, up to sampling noise. In the second the true answer is 0.196, close to the 0.195 of the hand calculation, and only the likelihood ratio of B *given* A's result recovers it.
 
 ## Biomedical connection
 
@@ -300,6 +401,41 @@ $\text{LR}^- = 0.01/0.99 \approx 0.0101$. Prior odds $= 1/249$. Posterior odds $
 <summary>Answer</summary>
 
 No. Independence would require $P(A \cap B) = 0.4 \times 0.5 = 0.2$, but it is 0. They are disjoint, so learning $A$ happened makes $P(B \mid A) = 0$, which is very different from $P(B) = 0.5$.
+
+</details>
+
+6. A patient has a pre-test probability of 5%. Test A (sensitivity 90%, specificity 95%) is **positive**. Then test B (sensitivity 80%, specificity 90%) is **negative**. Assuming the tests are conditionally independent given true status, find the probability after each result.
+
+<details>
+<summary>Answer</summary>
+
+Prior odds $= 0.05/0.95 = 1/19$. After A: $\text{LR}^+_A = 0.90/0.05 = 18$, so odds $= 18/19 \approx 0.947$ and probability $= 18/37 \approx 0.486$.
+
+After B: $\text{LR}^-_B = (1 - 0.80)/0.90 = 2/9 \approx 0.222$, so odds $= \tfrac{18}{19} \times \tfrac{2}{9} = \tfrac{4}{19} \approx 0.211$ and probability $= 4/23 \approx 0.174$. The posterior after A served as the prior for B. The negative result pulls the probability back down, but not to where it started.
+
+</details>
+
+7. In the first worked example (prevalence 1/250, $\text{LR}^+ = 99$), a laboratory re-runs the **same** assay on the **same** sample and gets a second positive. A colleague multiplies the odds by 99 again and reports a probability of 0.975. When is that justified? What is the right answer if false positives come from a feature of the sample itself, so that a repeat run always reproduces the first result?
+
+<details>
+<summary>Answer</summary>
+
+Multiplying by 99 twice assumes the two results are conditionally independent given carrier status. That holds if errors arise afresh on every run, and then the posterior odds are $99 \times 99/249 \approx 39.4$, a probability of about 0.975.
+
+If the error is a property of the sample, the second result is certain to match the first whether or not the person is a carrier. The likelihood ratio of the repeat, given the first result, is $1/1 = 1$, and the probability stays at about 0.284. To gain evidence you need a test whose errors have a different cause, such as a different assay method or a fresh sample.
+
+</details>
+
+8. A condition has prevalence 20%. Test A has sensitivity and specificity 90%, test B has sensitivity and specificity 80%, and the two are conditionally independent given true status. Compute $P(A^+)$, $P(B^+)$ and $P(A^+ \cap B^+)$. Are the two test results independent?
+
+<details>
+<summary>Answer</summary>
+
+$P(A^+) = 0.9 \times 0.2 + 0.1 \times 0.8 = 0.26$. $P(B^+) = 0.8 \times 0.2 + 0.2 \times 0.8 = 0.32$.
+
+$P(A^+ \cap B^+) = (0.9 \times 0.8) \times 0.2 + (0.1 \times 0.2) \times 0.8 = 0.144 + 0.016 = 0.16$.
+
+Independence would need $0.26 \times 0.32 = 0.0832$, about half of 0.16, so the results are **not** independent. Equivalently, $P(B^+ \mid A^+) = 0.16/0.26 \approx 0.615$, far above $P(B^+) = 0.32$: a positive A raises the probability of the condition from 0.20 to $0.18/0.26 \approx 0.69$, and that makes a positive B more likely.
 
 </details>
 
