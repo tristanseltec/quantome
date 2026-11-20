@@ -58,6 +58,30 @@ Everything depends on the factor $r = 1 - \eta a$:
 > [!TIP]
 > Standardising input features (mean 0, variance 1) makes the loss bowl rounder and the condition number smaller. It is the cheapest optimisation trick there is. Clinical variables in mixed units (age in years, LDL in mmol/L, CRP in mg/L) badly need it.
 
+### How fast: the condition number sets the pace
+
+One learning rate must serve every curvature. Along an axis with curvature $\lambda$ the error is multiplied by $1 - \eta\lambda$ at each step, and the slowest axis sets the overall pace. Raising $\eta$ helps the flattest axis ($1 - \eta\lambda_\text{min}$ falls) but in the end makes the steepest one overshoot harder ($\lvert1 - \eta\lambda_\text{max}\rvert$ rises). The best compromise makes the two equally bad, with opposite signs:
+
+$$
+1 - \eta\lambda_\text{min} = -(1 - \eta\lambda_\text{max})\quad\Rightarrow\quad\eta^* = \frac{2}{\lambda_\text{min} + \lambda_\text{max}}.
+$$
+
+> [!IMPORTANT]
+> With the best fixed learning rate, each step multiplies the error by $\rho = 1 - \eta^*\lambda_\text{min} = \dfrac{\lambda_\text{max} - \lambda_\text{min}}{\lambda_\text{max} + \lambda_\text{min}} = \dfrac{\kappa - 1}{\kappa + 1}$.
+
+Axes with curvatures in between shrink at least as fast. For large $\kappa$, $\rho\approx1 - 2/\kappa$, so cutting the error tenfold takes about $\ln10/\ln(1/\rho)\approx1.15\,\kappa$ steps: about 29 for $\kappa = 25$, about 1,150 for $\kappa = 1{,}000$. The work grows in proportion to the condition number.
+
+### Newton's method: let curvature choose the step
+
+The learning-rate table says the ideal step for curvature $a$ is $\eta = 1/a$. **Newton's method** takes that step in every direction, by measuring the curvature instead of guessing a learning rate. In one variable, minimise the second-order approximation $L(w + \Delta)\approx L + L'\Delta + \tfrac12L''\Delta^2$ ([derivatives and gradients](../../calculus-and-optimization/derivatives-and-gradients/)): its derivative $L' + L''\Delta$ is zero at $\Delta = -L'/L''$. With many parameters the same argument divides by the Hessian:
+
+> [!IMPORTANT]
+> $$w_{t+1} = w_t - \frac{L'(w_t)}{L''(w_t)},\qquad\mathbf{w}_{t+1} = \mathbf{w}_t - \mathbf{H}^{-1}\nabla L(\mathbf{w}_t)$$
+
+On a quadratic bowl the approximation is exact, so one step reaches the minimum whatever the condition number. For $\tfrac12(w_1^2 + 25w_2^2)$ at $(-4, 1)$ the gradient is $(-4, 25)$; dividing by the curvatures $1$ and $25$ gives the step $-(-4, 1)$, straight to $(0, 0)$. On other smooth losses Newton needs a few steps, and near the minimum each one roughly squares the error.
+
+Two things keep it out of deep learning. $\mathbf{H}$ has $n^2$ entries, and solving with it costs about $n^3$ operations: trivial for the dozen covariates of a [logistic regression](../../classical-machine-learning/linear-and-logistic-regression/), which statistical software typically fits this way, and out of reach for millions of weights. It also needs positive curvature: where $L'' < 0$ the flat point of the parabola is a maximum, and Newton steps towards it. RMSProp and Adam, below, pursue the same goal cheaply, with one scaling factor per parameter.
+
 ### Stochastic gradient descent and mini-batches
 
 The training loss is an average over $n$ examples, $L(\mathbf{w}) = \frac1n\sum_i\ell_i(\mathbf{w})$, so its gradient is the average of per-example gradients. With $n = 400{,}000$ people, computing it exactly for every step is wasteful. **Stochastic gradient descent (SGD)** estimates it from a random **mini-batch** $\mathcal{B}$ of $B$ examples:
@@ -161,6 +185,8 @@ For $\eta = 0.1$ the loss goes $2\to0.72\to0.2592\to0.0933$, falling by the fact
 The first step has size $\eta$ whatever the gradient's magnitude: $g_1 = 2000$ would give the same step. Without bias correction, the step would be $0.01\cdot0.2/\sqrt{0.004} = 0.01\cdot3.162 = 0.0316$, more than three times too large.
 
 **4. Weight decay.** With SGD, $\eta = 0.1$ and $\lambda = 0.01$, every step multiplies the weights by $1 - 0.001 = 0.999$ before the gradient step. Over 1,000 steps, with no gradient pushing back, a weight would shrink by $0.999^{1000}\approx0.37$.
+
+**5. Newton's method on a non-quadratic.** $L(w) = e^w - 2w$ has $L' = e^w - 2$ and $L'' = e^w > 0$, with its minimum at $w = \ln2\approx0.6931$. From $w_0 = 0$: $w_1 = 0 - (1 - 2)/1 = 1$, then $w_2 = 1 - (e - 2)/e = 0.7358$, then $w_3 = 0.6940$. The errors $0.693$, $0.307$, $0.043$, $0.0009$ shrink faster at every step, with no learning rate to choose.
 
 ## In code
 
@@ -311,6 +337,42 @@ AdamW + sched   epoch 20  training loss 0.2771
 
 Plain SGD lags far behind; momentum and the adaptive methods are much faster. AdamW with a schedule starts slowly, because its first 100 steps are warmup (an epoch here is 32 mini-batches, so warmup spans about three epochs), and ends lowest. Treat the ranking with care: it is one seed, one problem and untuned learning rates, and these are *training* losses. Whether a lower training loss gives better predictions on new people is a separate question, answered on held-out data ([model evaluation](../../classical-machine-learning/model-evaluation/)).
 
+Third, curvature: gradient-descent steps as the condition number grows, and Newton's method on worked example 5.
+
+```python
+import numpy as np
+
+# Part 1. Bowl with curvatures 1 and kappa, run at the best fixed learning rate 2 / (1 + kappa)
+print(f"{'kappa':>5} {'factor':>7} {'GD steps for 10x':>17} {'1.15 * kappa':>13}")
+for kappa in [25, 100, 1000]:
+    A = np.array([1.0, kappa])                    # curvatures (Hessian diagonal)
+    lr = 2 / (1 + kappa)
+    w, steps = np.array([1.0, 1.0]), 0
+    while np.linalg.norm(w) > 0.1 * np.sqrt(2):   # until 10 times closer to the minimum
+        w, steps = w - lr * A * w, steps + 1
+    print(f"{kappa:5d} {(kappa - 1) / (kappa + 1):7.4f} {steps:17d} {1.15 * kappa:13.0f}")
+
+# Part 2. Newton's method on L(w) = exp(w) - 2w, whose minimum is at ln 2
+w = 0.0
+for t in range(5):
+    print(f"Newton step {t}: w = {w:.6f}  error = {abs(w - np.log(2)):.1e}")
+    w = w - (np.exp(w) - 2) / np.exp(w)           # w - L'(w) / L''(w)
+```
+
+```text
+kappa  factor  GD steps for 10x  1.15 * kappa
+   25  0.9231                29            29
+  100  0.9802               116           115
+ 1000  0.9980              1152          1150
+Newton step 0: w = 0.000000  error = 6.9e-01
+Newton step 1: w = 1.000000  error = 3.1e-01
+Newton step 2: w = 0.735759  error = 4.3e-02
+Newton step 3: w = 0.694042  error = 9.0e-04
+Newton step 4: w = 0.693148  error = 4.0e-07
+```
+
+The step counts track $1.15\,\kappa$: a bowl 40 times worse conditioned costs 40 times the steps. Each Newton error is about half the square of the one before, so the number of correct digits roughly doubles per step.
+
 ## Biomedical connection
 
 Genomic data stress optimizers in specific ways:
@@ -371,6 +433,33 @@ $t = 1$: $1/0.001 = 1000$. $t = 10$: $1/(1 - 0.990) = 1/0.010\approx100$. $t = 1
 <summary>Answer</summary>
 
 `Adam(weight_decay)` adds $\lambda\mathbf{w}$ to the gradient, so the decay term is divided by $\sqrt{\hat{\mathbf{v}}}+\epsilon$ like the rest of the gradient: parameters with large past gradients are barely decayed. `AdamW` subtracts $\eta\lambda\mathbf{w}$ directly, so all weights shrink at the same relative rate. For SGD there is no per-parameter denominator, so adding $\lambda\mathbf{w}$ to the gradient gives exactly $\mathbf{w}\leftarrow(1 - \eta\lambda)\mathbf{w} - \eta\mathbf{g}$.
+
+</details>
+
+6. A loss bowl has curvatures 2 and 18. (a) What is its condition number? (b) What is the best fixed learning rate, and by what factor does each step shrink the error? (c) About how many steps cut the error by a factor of 1,000?
+
+<details>
+<summary>Answer</summary>
+
+(a) $\kappa = 18/2 = 9$. (b) $\eta^* = 2/(2 + 18) = 0.1$. The two factors are $1 - 0.1(2) = 0.8$ and $1 - 0.1(18) = -0.8$, so $\rho = 0.8 = (9 - 1)/(9 + 1)$. (c) $0.8^t = 0.001$ gives $t = \ln1000/\ln1.25\approx31$ steps.
+
+</details>
+
+7. Take one Newton step on $L(w_1, w_2) = w_1^2 + 4w_2^2$ from $(1, 1)$, and compare it with the three gradient-descent steps of problem 2.
+
+<details>
+<summary>Answer</summary>
+
+$\nabla L = (2, 8)$ and $\mathbf{H} = \operatorname{diag}(2, 8)$, so $\mathbf{H}^{-1}\nabla L = (1, 1)$ and the step lands on $(0, 0)$, the exact minimum. Gradient descent with $\eta = 0.2$ had only reached $(0.216, -0.216)$ after three steps. Newton gives each axis its own ideal step size, $1/2$ and $1/8$.
+
+</details>
+
+8. Newton's method is started at $w_0 = 0.2$ on $L(w) = \tfrac14w^4 - \tfrac12w^2$, whose minima are at $w = \pm1$. Compute $w_1$. Where is the method heading, and why? What does a gradient-descent step with $\eta = 0.1$ do instead?
+
+<details>
+<summary>Answer</summary>
+
+$L' = w^3 - w = -0.192$ and $L'' = 3w^2 - 1 = -0.88$, so $w_1 = 0.2 - (-0.192)/(-0.88) = 0.2 - 0.218 = -0.018$. It is heading for $w = 0$, where $L' = 0$ but $L'' = -1$: a local *maximum*. Newton's method jumps to the flat point of the fitted parabola, and with negative curvature that parabola is a dome. Gradient descent moves to $0.2 - 0.1(-0.192) = 0.219$, downhill towards $w = 1$. Newton's method is safe where the curvature is positive, as in convex problems such as logistic regression.
 
 </details>
 

@@ -1,5 +1,5 @@
 +++
-summary = "Compute derivatives, partial derivatives, gradients and Jacobians by hand, and check them numerically with finite differences."
+summary = "Compute derivatives, partial derivatives, gradients, Jacobians and Hessians by hand, approximate a function to first and second order, and check derivatives numerically with finite differences."
 +++
 
 # Derivatives and Gradients
@@ -110,6 +110,36 @@ The Jacobian is the best **linear** approximation of $\mathbf{f}$ near $\mathbf{
 
 In the next chapter, backpropagation will multiply Jacobians together via the chain rule, without ever forming most of them explicitly.
 
+### Second derivatives, curvature and the Hessian
+
+The derivative says which way is downhill, not how far you can walk before the slope changes. That is the job of the **second derivative** $f''(x)$, the derivative of the derivative, also called the **curvature**. If $f'' > 0$ the slope is increasing and the graph bends upwards like a bowl; if $f'' < 0$ it bends downwards like a dome. At a flat point ($f' = 0$) the first means a minimum, the second a maximum.
+
+**A better approximation.** The tangent line matches the value and slope of $f$ at $x$. A parabola $c_0 + c_1\Delta x + c_2\Delta x^2$ can match the second derivative too. At $\Delta x = 0$ its value, slope and second derivative are $c_0$, $c_1$ and $2c_2$, so we need $c_0 = f(x)$, $c_1 = f'(x)$ and $c_2 = \tfrac12f''(x)$:
+
+> [!IMPORTANT]
+> $$f(x + \Delta x) \approx f(x) + f'(x)\,\Delta x + \tfrac12 f''(x)\,\Delta x^2$$
+
+This is the **second-order Taylor approximation**. For $f(x) = x^3$ at $x = 2$ we have $f = 8$, $f' = 12$ and $f'' = 6x = 12$. Stepping to $x = 2.1$, the tangent line predicts $9.2$, the parabola $9.2 + \tfrac12(12)(0.1)^2 = 9.26$, and the true value is $2.1^3 = 9.261$.
+
+**Many variables.** Now there is a second derivative for every pair of variables. Together they form the $n\times n$ **Hessian** matrix $\mathbf{H}$, with entries $H_{ij} = \partial^2f/\partial w_i\,\partial w_j$. It is the Jacobian of the gradient, and it is symmetric, because for smooth functions the order of differentiation does not matter. For $f = w_1^2 + 3w_1w_2$ the gradient is $(2w_1 + 3w_2,\ 3w_1)$, and differentiating each component again gives $\mathbf{H} = \begin{bmatrix}2 & 3\\ 3 & 0\end{bmatrix}$.
+
+To extend the approximation, walk along a line: fix a unit direction $\mathbf{u}$ and let $g(t) = f(\mathbf{w} + t\mathbf{u})$. By the chain rule, $g'(t) = \nabla f(\mathbf{w} + t\mathbf{u})^\top\mathbf{u}$, which at $t = 0$ is the **directional derivative** $\nabla f^\top\mathbf{u}$. Along the line the gradient changes at rate $\mathbf{H}\mathbf{u}$, so $g''(0) = \mathbf{u}^\top\mathbf{H}\mathbf{u}$, the **curvature in direction $\mathbf{u}$**. The one-variable formula with $\Delta\mathbf{w} = t\mathbf{u}$ becomes
+
+> [!IMPORTANT]
+> $$f(\mathbf{w} + \Delta\mathbf{w}) \approx f(\mathbf{w}) + \nabla f(\mathbf{w})^\top\Delta\mathbf{w} + \tfrac12\,\Delta\mathbf{w}^\top\mathbf{H}\,\Delta\mathbf{w}$$
+
+A flat point ($\nabla f = \mathbf{0}$) is a minimum if the curvature is positive in every direction, and a **saddle point** if its sign depends on the direction.
+
+**Why training cares.** Take one gradient-descent step on a loss $L$: $\Delta\mathbf{w} = -\eta\mathbf{g}$, with $\mathbf{g} = \nabla L$ and step size $\eta$. Then
+
+$$
+L(\mathbf{w} - \eta\mathbf{g}) \approx L(\mathbf{w}) - \eta\,\lVert\mathbf{g}\rVert^2 + \tfrac12\eta^2\,\mathbf{g}^\top\mathbf{H}\mathbf{g}.
+$$
+
+The middle term is the gain the gradient promises; the last is what curvature takes back. If $\eta$ is too large for the curvature along $\mathbf{g}$, the last term wins and the loss goes *up*. In one variable with constant curvature $a$ (so $L = \tfrac a2w^2$ and $g = aw$) the change is $-\eta g^2\bigl(1 - \tfrac12\eta a\bigr)$, negative only when $\eta < 2/a$. That is exactly the learning-rate limit in [gradient descent and optimizers](../../calculus-and-optimization/gradient-descent-and-optimizers/).
+
+A model with a million parameters has $10^{12}$ Hessian entries, so deep learning almost always works from gradients alone. Small models can afford curvature: [Newton's method for logistic regression](../../classical-machine-learning/linear-and-logistic-regression/) and the leaf values in [gradient boosting](../../classical-machine-learning/trees-forests-and-boosting/) use this quadratic approximation directly.
+
 ### Numerical derivatives and gradient checking
 
 The definition suggests computing a derivative numerically by plugging in a small $h$. There are two common recipes:
@@ -157,6 +187,14 @@ $$
 $$
 
 A step $\Delta\mathbf{x} = (0.1, 0)$ changes the outputs by about $\mathbf{J}\Delta\mathbf{x} = (0.2, 0.1)$. Actual: $\mathbf{f}(1.1, 2) = (2.2, 5.1)$ versus $\mathbf{f}(1,2) = (2, 5)$: exactly $(0.2, 0.1)$, because $\mathbf{f}$ is linear in $x_1$.
+
+**4. Curvature closes the gap.** In example 1 the linear approximation predicted a change of $0.14$; the actual change was $0.1407$. The Hessian of $f = w_1^2 + 3w_1w_2$ is $\begin{bmatrix}2 & 3\\ 3 & 0\end{bmatrix}$ everywhere, so for $\Delta\mathbf{w} = (0.01, 0.02)$ the second-order term is
+
+$$
+\tfrac12\,\Delta\mathbf{w}^\top\mathbf{H}\,\Delta\mathbf{w} = \tfrac12\bigl(2(0.01)^2 + 2\cdot3(0.01)(0.02)\bigr) = \tfrac12(0.0002 + 0.0012) = 0.0007.
+$$
+
+Adding it to $0.14$ gives $0.1407$, the actual change exactly, because $f$ is itself quadratic. Curvature depends on direction: along $\mathbf{u} = (1, 1)/\sqrt2$ it is $\mathbf{u}^\top\mathbf{H}\mathbf{u} = (2 + 3 + 3)/2 = 4$, but along $(1, -1)/\sqrt2$ it is $(2 - 3 - 3)/2 = -2$. With curvatures of both signs, this surface is a saddle, not a bowl.
 
 ## In code
 
@@ -241,6 +279,68 @@ relative error with bug: 6.2e-01
 
 Note the matrix form `X.T @ (...)`: the per-person terms $\mathbf{x}_i\cdot(\text{scalar}_i)$ are summed by one matrix–vector product, which has shape $(3, 50)(50,) \to (3,)$, the shape of $\mathbf{w}$.
 
+Finally, curvature. The Hessian is the Jacobian of the gradient, so estimate it as in a gradient check: nudge one coordinate at a time and difference the *gradient*. Then compare the first- and second-order approximations along the steepest-descent direction.
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(0)
+sigmoid = lambda z: 1.0 / (1.0 + np.exp(-z))
+
+# The same toy cohort and loss as in the gradient check
+X = rng.normal(size=(50, 3))
+y = (rng.uniform(size=50) < sigmoid(X @ np.array([1.0, 0.5, 0.8]))).astype(float)
+
+def loss(w):
+    return np.mean((sigmoid(X @ w) - y) ** 2)
+
+def grad(w):
+    p = sigmoid(X @ w)
+    return X.T @ (2 * (p - y) * p * (1 - p)) / len(y)
+
+def hessian(w, h=1e-5):
+    """Column j is the central difference of the gradient along coordinate j."""
+    H = np.zeros((len(w), len(w)))
+    for j in range(len(w)):
+        e = np.zeros_like(w)
+        e[j] = h
+        H[:, j] = (grad(w + e) - grad(w - e)) / (2 * h)
+    return H
+
+w = np.array([0.3, -0.2, 0.1])
+g, H = grad(w), hessian(w)
+print("Hessian:")
+print(H.round(4))
+print("symmetric:", np.allclose(H, H.T))
+print("eigenvalues (curvatures):", np.linalg.eigvalsh(H).round(4))
+
+u = -g / np.linalg.norm(g)                 # unit vector pointing steepest downhill
+print(f"slope along u: {g @ u:.4f}   curvature along u: {u @ H @ u:.4f}")
+print(f"{'step':>5} {'actual change':>14} {'1st-order error':>16} {'2nd-order error':>16}")
+for t in [1.0, 0.1, 0.01]:
+    d = t * u
+    actual = loss(w + d) - loss(w)
+    first = g @ d                          # gradient term
+    second = first + 0.5 * d @ H @ d       # plus curvature term
+    print(f"{t:5.2f} {actual:14.6f} {abs(actual - first):16.1e} {abs(actual - second):16.1e}")
+```
+
+```text
+Hessian:
+[[ 0.172   0.0132  0.0158]
+ [ 0.0132  0.0874 -0.0011]
+ [ 0.0158 -0.0011  0.1004]]
+symmetric: True
+eigenvalues (curvatures): [0.0844 0.0982 0.1772]
+slope along u: -0.1077   curvature along u: 0.1681
+ step  actual change  1st-order error  2nd-order error
+ 1.00      -0.043657          6.4e-02          2.0e-02
+ 0.10      -0.009936          8.3e-04          9.3e-06
+ 0.01      -0.001068          8.4e-06          7.1e-09
+```
+
+The Hessian is symmetric and all three eigenvalues are positive, so near this $\mathbf{w}$ the loss is bowl-shaped in every direction. Each tenfold cut in the step cuts the first-order error about a hundredfold (it is the neglected curvature term) and the second-order error by a thousandfold or more. At a step of length 1 neither is accurate: Taylor approximations are local. Along $\mathbf{u}$ the quadratic model $-0.1077\,t + \tfrac12(0.1681)\,t^2$ is lowest at $t = 0.1077/0.1681\approx0.64$: slope divided by curvature, the idea behind Newton's method.
+
 ## Biomedical connection
 
 Derivatives are more than a training tool; they also answer scientific questions about a trained model.
@@ -296,6 +396,33 @@ $\mathbf{z} = \mathbf{W}\mathbf{x} = (3, -2)$. ReLU's derivative is 1 for $z_1 =
 <summary>Answer</summary>
 
 $2\times2{,}000{,}000 = 4$ million loss evaluations at 10 ms each is $40{,}000$ s, about 11 hours, for a single gradient. Training needs thousands of gradients. Backpropagation gets the exact gradient for roughly the cost of a few forward passes.
+
+</details>
+
+6. For $f(w_1, w_2) = w_1^2w_2 + w_2^2$, find the gradient and the Hessian at $(1, 1)$, then approximate $f(1.1, 1.1)$ to first and to second order. Compare with the exact value.
+
+<details>
+<summary>Answer</summary>
+
+$\nabla f = (2w_1w_2,\ w_1^2 + 2w_2) = (2, 3)$, $\mathbf{H} = \begin{bmatrix}2w_2 & 2w_1\\ 2w_1 & 2\end{bmatrix} = \begin{bmatrix}2 & 2\\ 2 & 2\end{bmatrix}$ and $f(1, 1) = 2$. With $\Delta\mathbf{w} = (0.1, 0.1)$, first order gives $2 + 0.2 + 0.3 = 2.5$; the second-order term $\tfrac12(0.02 + 0.04 + 0.02) = 0.04$ raises it to $2.54$. Exact: $1.331 + 1.21 = 2.541$. The last $0.001$ is a cubic term.
+
+</details>
+
+7. Let $f(z) = \ln(1 + e^z)$. (a) Show that $f'(z) = \sigma(z)$ and $f''(z) = \sigma(z)\bigl(1 - \sigma(z)\bigr)$. (b) Estimate $f(0.2)$ from the second-order approximation at $z = 0$. (c) What does the sign of $f''$ say about the shape of $f$?
+
+<details>
+<summary>Answer</summary>
+
+(a) $f'(z) = \dfrac{e^z}{1 + e^z} = \sigma(z)$, so $f'' = \sigma' = \sigma(1 - \sigma)$. (b) $\ln2 + 0.5(0.2) + \tfrac12(0.25)(0.2)^2 = 0.6931 + 0.1 + 0.005 = 0.7981$; the exact value agrees to four decimals. (c) $f'' > 0$ everywhere, so the graph is a bowl with no domes. This $f$ is the log-loss of a control as a function of the model's raw score ([loss functions](../../calculus-and-optimization/loss-functions/)), and its upward curvature is why logistic regression has no false minima.
+
+</details>
+
+8. A colleague finds that $f(w_1, w_2) = w_1^2 + 4w_1w_2 + w_2^2$ has $\nabla f = \mathbf{0}$ at the origin and $\partial^2f/\partial w_1^2 = \partial^2f/\partial w_2^2 = 2 > 0$, and concludes that the origin is a minimum. What went wrong?
+
+<details>
+<summary>Answer</summary>
+
+They checked the curvature only along the two axes. $\mathbf{H} = \begin{bmatrix}2 & 4\\ 4 & 2\end{bmatrix}$, and along $\mathbf{u} = (1, -1)/\sqrt2$ the curvature is $(2 - 4 - 4 + 2)/2 = -2$: indeed $f(0.1, -0.1) = -0.02 < f(0, 0)$. The eigenvalues are $6$ and $-2$, so the origin is a saddle. A minimum needs positive curvature in *every* direction.
 
 </details>
 

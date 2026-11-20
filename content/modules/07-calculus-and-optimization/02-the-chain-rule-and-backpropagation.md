@@ -91,13 +91,40 @@ Check the shapes: $\boldsymbol\delta_\mathbf{y}\mathbf{x}^\top$ is $(n_\text{out
 
 **Addition** copies the incoming gradient to both inputs. **Multiplication** $f = uv$ sends $\bar f\,v$ to $u$ and $\bar f\,u$ to $v$ (each input gets the gradient times the *other* input).
 
+### A whole batch through a linear layer
+
+Training feeds the network a batch of $B$ people at once, stored as a matrix $\mathbf{X}$ with one **row** per person. With rows as examples, the layer is usually written
+
+$$
+\mathbf{Z} = \mathbf{X}\mathbf{W} + \mathbf{b},\qquad \underbrace{\mathbf{X}}_{B\times n_\text{in}},\quad \underbrace{\mathbf{W}}_{n_\text{in}\times n_\text{out}},\quad \underbrace{\mathbf{Z}}_{B\times n_\text{out}},
+$$
+
+with the bias $\mathbf{b}$ (length $n_\text{out}$) added to every row. This $\mathbf{W}$ is the transpose of the one in the rule above (the $n_\text{out}\times n_\text{in}$ version is what PyTorch's `nn.Linear` stores). The row layout is the one we will use to build [a neural network from scratch](../../neural-networks/a-neural-network-from-scratch/). Backprop delivers $\boldsymbol\Delta = \partial L/\partial\mathbf{Z}$, also $B\times n_\text{out}$: row $i$ is the error signal for person $i$.
+
+**Intuition.** Everyone passes through the same weights, so each person contributes a single-example gradient (the outer product of their input and their error signal) and the contributions add. A matrix product performs that sum.
+
+**Derivation.** One entry of the output is $Z_{ik} = \sum_j X_{ij}W_{jk} + b_k$. The weight $W_{jk}$ appears in $Z_{ik}$ for every person $i$, with $\partial Z_{ik}/\partial W_{jk} = X_{ij}$. The bias $b_k$ appears in the same entries with derivative 1. The input $X_{ij}$ appears in $Z_{ik}$ for every output $k$, with derivative $W_{jk}$. Multiply along each path and add across paths:
+
+$$
+\frac{\partial L}{\partial W_{jk}} = \sum_{i=1}^{B}X_{ij}\,\Delta_{ik},\qquad \frac{\partial L}{\partial b_k} = \sum_{i=1}^{B}\Delta_{ik},\qquad \frac{\partial L}{\partial X_{ij}} = \sum_{k=1}^{n_\text{out}}\Delta_{ik}\,W_{jk}.
+$$
+
+Each sum is one entry of a matrix product:
+
+> [!IMPORTANT]
+> $$\frac{\partial L}{\partial\mathbf{W}} = \mathbf{X}^\top\boldsymbol\Delta,\qquad \frac{\partial L}{\partial\mathbf{b}} = \text{column sums of }\boldsymbol\Delta,\qquad \frac{\partial L}{\partial\mathbf{X}} = \boldsymbol\Delta\,\mathbf{W}^\top$$
+
+The shapes confirm it. $\mathbf{X}^\top\boldsymbol\Delta$ is $(n_\text{in}\times B)(B\times n_\text{out})$, the shape of $\mathbf{W}$, and the $B$ that disappears in the middle is the sum over people. $\boldsymbol\Delta\mathbf{W}^\top$ is $(B\times n_\text{out})(n_\text{out}\times n_\text{in})$, the shape of $\mathbf{X}$.
+
+These are the **vector–Jacobian products** of reverse mode. The Jacobian of $\mathbf{Z}$ with respect to $\mathbf{W}$ has a row for every entry of $\mathbf{Z}$ and a column for every entry of $\mathbf{W}$: for 55 inputs, 32 outputs and a batch of 64, that is $2{,}048\times1{,}760$, about 3.6 million numbers, most of them zero. Backprop never builds it. $\mathbf{X}^\top\boldsymbol\Delta$ is the product of $\boldsymbol\Delta$ with that Jacobian, computed by one small matrix multiplication.
+
 ### What backprop costs
 
 The forward pass must **store** every intermediate value ($\mathbf{z}_1$, $\mathbf{h}$, …), because the backward rules use them ($\mathbf{x}$ in $\boldsymbol\delta\mathbf{x}^\top$, $\mathbf{z}$ in $\phi'(\mathbf{z})$). The backward pass costs about the same as the forward pass, roughly twice for the matrix multiplications, since each needs gradients for both inputs and weights. Memory for stored activations, not arithmetic, is often what limits the batch size or sequence length you can train on, which matters for long DNA sequences.
 
 ### Why depth makes gradients fragile
 
-The gradient reaching the first layer is a product of one Jacobian per layer. If those factors are typically smaller than 1 in size, the product shrinks exponentially with depth (**vanishing gradients**); if larger than 1, it explodes. Sigmoid derivatives are at most 0.25, so ten stacked sigmoids can shrink a gradient by up to $0.25^{10}\approx10^{-6}$. ReLU, careful initialisation, normalisation layers and residual connections exist largely to keep these products well behaved; see [training deep networks](../../neural-networks/training-deep-networks/).
+The gradient reaching the first layer is a product of one Jacobian per layer. If those factors are typically smaller than 1 in size, the product shrinks exponentially with depth (**vanishing gradients**); if larger than 1, it explodes. Sigmoid derivatives are at most 0.25, so the derivatives of ten stacked sigmoids multiply to at most $0.25^{10}\approx10^{-6}$. ReLU, careful initialisation, normalisation layers and residual connections exist largely to keep these products well behaved; see [training deep networks](../../neural-networks/training-deep-networks/).
 
 ## Worked example
 
@@ -159,6 +186,44 @@ Work from the loss back to the inputs, reusing each result.
 **One step of gradient descent** with learning rate $0.1$ (each parameter minus $0.1\times$ its gradient):
 $\mathbf{W}_1\to\begin{bmatrix}0.5 & -0.5\\ 0.9 & 0.3\end{bmatrix}$, $\mathbf{b}_1\to(0, 0.4)$, $\mathbf{w}_2\to(1.0, 0.0)$, $b_2\to0.45$.
 New forward pass: $\mathbf{z}_1 = (-0.5,\ 0.9 + 0.6 + 0.4) = (-0.5, 1.9)$, $\mathbf{h} = (0, 1.9)$, $\hat y = 0 + 0 + 0.45 = 0.45$, $L = \tfrac12(0.55)^2 = 0.15125$. The loss fell from 2 to about 0.151.
+
+### A batch of two, by hand
+
+Two people, two features, two outputs, through the layer $\mathbf{Z} = \mathbf{X}\mathbf{W} + \mathbf{b}$. Take the loss $L = \tfrac12\sum(\mathbf{Z} - \mathbf{Y})^2$ over all four entries, so that $\boldsymbol\Delta = \mathbf{Z} - \mathbf{Y}$.
+
+$$
+\mathbf{X} = \begin{bmatrix}1 & 2\\ 0 & -1\end{bmatrix},\
+\mathbf{W} = \begin{bmatrix}1 & 0\\ -1 & 2\end{bmatrix},\
+\mathbf{b} = (1,\ -1),\
+\mathbf{Y} = \begin{bmatrix}-0.5 & 4\\ 1 & -3\end{bmatrix}.
+$$
+
+**Forward.** $\mathbf{X}\mathbf{W} = \begin{bmatrix}-1 & 4\\ 1 & -2\end{bmatrix}$; adding $\mathbf{b}$ to each row gives $\mathbf{Z} = \begin{bmatrix}0 & 3\\ 2 & -3\end{bmatrix}$. So $\boldsymbol\Delta = \begin{bmatrix}0.5 & -1\\ 1 & 0\end{bmatrix}$ and $L = \tfrac12(0.25 + 1 + 1 + 0) = 1.125$.
+
+**Backward.**
+
+$$
+\begin{aligned}
+\frac{\partial L}{\partial\mathbf{W}} &= \mathbf{X}^\top\boldsymbol\Delta = \begin{bmatrix}1 & 0\\ 2 & -1\end{bmatrix}\begin{bmatrix}0.5 & -1\\ 1 & 0\end{bmatrix} = \begin{bmatrix}0.5 & -1\\ 0 & -2\end{bmatrix},\\
+\frac{\partial L}{\partial\mathbf{X}} &= \boldsymbol\Delta\mathbf{W}^\top = \begin{bmatrix}0.5 & -1\\ 1 & 0\end{bmatrix}\begin{bmatrix}1 & -1\\ 0 & 2\end{bmatrix} = \begin{bmatrix}0.5 & -2.5\\ 1 & -1\end{bmatrix},
+\end{aligned}
+$$
+
+and $\partial L/\partial\mathbf{b}$ is the column sums of $\boldsymbol\Delta$: $(0.5 + 1,\ -1 + 0) = (1.5,\ -1)$.
+
+**Check, person by person.** Person 1 contributes the outer product of their input $(1, 2)$ and error signal $(0.5, -1)$, which is $\begin{bmatrix}0.5 & -1\\ 1 & -2\end{bmatrix}$; person 2 contributes $\begin{bmatrix}0 & 0\\ -1 & 0\end{bmatrix}$. Their sum is $\partial L/\partial\mathbf{W}$.
+
+### Three sigmoids in a row
+
+Take a chain $h_k = \sigma(h_{k-1})$ with every weight 1, no biases and input $h_0 = 0$. Each unit multiplies the gradient by $\sigma'(z_k) = h_k(1 - h_k)$.
+
+| Layer $k$ | $z_k = h_{k-1}$ | $h_k = \sigma(z_k)$ | $\sigma'(z_k)$ | Product so far |
+|---|---|---|---|---|
+| 1 | 0 | 0.5 | 0.25 | 0.25 |
+| 2 | 0.5 | 0.6225 | 0.2350 | 0.0588 |
+| 3 | 0.6225 | 0.6508 | 0.2273 | 0.0134 |
+
+So $\partial h_3/\partial h_0\approx0.0134$: after only three layers, a gradient travelling backwards shrinks to 1.3% of its size. That is below even the bound $0.25^3\approx0.0156$, because only the first unit sits at $z = 0$, where $\sigma'$ peaks.
 
 ## In code
 
@@ -263,6 +328,55 @@ f = 15.0  df/da = 3.0  df/db = 8.0
 
 Every gradient matches the hand calculation. (The loss after one step is printed as 0.1513; the exact value 0.15125 is stored in float32 as slightly more than 0.15125, so it rounds up.)
 
+Finally, check the batch rules against autograd, and extend the sigmoid chain to 20 layers, once with every weight 1 and once with every weight 4.
+
+```python
+import torch
+
+# Worked example: a batch of 2 people through Z = X W + b, with L = half the sum of squared errors
+X = torch.tensor([[1.0, 2.0], [0.0, -1.0]], requires_grad=True)   # (B, n_in)
+W = torch.tensor([[1.0, 0.0], [-1.0, 2.0]], requires_grad=True)   # (n_in, n_out)
+b = torch.tensor([1.0, -1.0], requires_grad=True)                 # (n_out,)
+Y = torch.tensor([[-0.5, 4.0], [1.0, -3.0]])
+
+Z = X @ W + b
+L = 0.5 * ((Z - Y) ** 2).sum()
+L.backward()
+with torch.no_grad():
+    D = Z - Y                                # Delta = dL/dZ, shape (B, n_out)
+    print("Z =", Z.tolist(), " L =", L.item())
+    print("X^T Delta   =", (X.T @ D).tolist(), " autograd:", W.grad.tolist())
+    print("column sums =", D.sum(dim=0).tolist(), " autograd:", b.grad.tolist())
+    print("Delta W^T   =", (D @ W.T).tolist(), " autograd:", X.grad.tolist())
+
+# A chain of n sigmoid units, h_k = sigmoid(w * h_{k-1}), starting from h_0 = 0
+def chain_gradient(n, w):
+    h0 = torch.tensor(0.0, dtype=torch.float64, requires_grad=True)
+    h = h0
+    for _ in range(n):
+        h = torch.sigmoid(w * h)
+    h.backward()                             # d h_n / d h_0
+    return h0.grad.item()
+
+print(f"{'depth':>5} {'w = 1':>10} {'w = 4':>10} {'0.25^depth':>11}")
+for n in [1, 3, 10, 20]:
+    print(f"{n:5d} {chain_gradient(n, 1.0):10.2e} {chain_gradient(n, 4.0):10.2e} {0.25 ** n:11.2e}")
+```
+
+```text
+Z = [[0.0, 3.0], [2.0, -3.0]]  L = 1.125
+X^T Delta   = [[0.5, -1.0], [0.0, -2.0]]  autograd: [[0.5, -1.0], [0.0, -2.0]]
+column sums = [1.5, -1.0]  autograd: [1.5, -1.0]
+Delta W^T   = [[0.5, -2.5], [1.0, -1.0]]  autograd: [[0.5, -2.5], [1.0, -1.0]]
+depth      w = 1      w = 4  0.25^depth
+    1   2.50e-01   1.00e+00    2.50e-01
+    3   1.34e-02   4.68e-02    1.56e-02
+   10   3.88e-07   7.21e-10    9.54e-07
+   20   1.27e-13   4.71e-21    9.09e-13
+```
+
+The matrix formulas agree with autograd, and the depth-3 entry is the $0.0134$ computed by hand. With weights of 1 the gradient is about $10^{-13}$ after 20 layers. Larger weights do not rescue it: with $w = 4$ the first factor is $4\times0.25 = 1$, but the bigger pre-activations push every later unit into saturation, where $\sigma'$ is tiny, and the gradient vanishes faster still. The same shrinking product, taken along a sequence instead of through layers, limits how far back [recurrent networks](../../deep-architectures-for-sequences/recurrent-networks-and-lstms/) can remember.
+
 > [!TIP]
 > When you implement a new layer by hand, verify it with a finite-difference gradient check in float64, as in [derivatives and gradients](../../calculus-and-optimization/derivatives-and-gradients/). PyTorch provides `torch.autograd.gradcheck` for exactly this.
 
@@ -322,6 +436,35 @@ $\partial L/\partial\mathbf{x} = \mathbf{W}^\top\boldsymbol\delta_\mathbf{y}$: e
 <summary>Answer</summary>
 
 Many inputs, one output (like a loss): **reverse mode**, one backward pass gives all 1,000,000 partial derivatives. One input, many outputs: **forward mode**, one forward pass seeded with $\dot x = 1$ gives the derivatives of all outputs. Each mode costs one pass per seed, so seed on the small side.
+
+</details>
+
+6. A layer with one output, $\mathbf{z} = \mathbf{X}\mathbf{w} + b$, sees a batch of three people with $\mathbf{X} = \begin{bmatrix}1 & 0\\ 2 & 1\\ -1 & 3\end{bmatrix}$ and weights $\mathbf{w} = (2, -1)^\top$. Backprop delivers $\boldsymbol\Delta = (0.5, -1, 0.5)^\top$. Give the shape and value of $\partial L/\partial\mathbf{w}$, $\partial L/\partial b$ and $\partial L/\partial\mathbf{X}$.
+
+<details>
+<summary>Answer</summary>
+
+$\partial L/\partial\mathbf{w} = \mathbf{X}^\top\boldsymbol\Delta$, shape $2\times1$: entry 1 is $1(0.5) + 2(-1) + (-1)(0.5) = -2$, entry 2 is $0(0.5) + 1(-1) + 3(0.5) = 0.5$.
+$\partial L/\partial b = 0.5 - 1 + 0.5 = 0$, a scalar: the three error signals cancel.
+$\partial L/\partial\mathbf{X} = \boldsymbol\Delta\mathbf{w}^\top$, shape $3\times2$: $\begin{bmatrix}1 & -0.5\\ -2 & 1\\ 1 & -0.5\end{bmatrix}$.
+
+</details>
+
+7. In a chain of six sigmoid units with every weight 1, the biases have pushed every pre-activation to $z = 2$. (a) By what factor is a gradient multiplied on its way back through the chain? (b) Compare with the best case of 0.25 per layer. (c) How large would each weight have to be for a factor of 1 per layer?
+
+<details>
+<summary>Answer</summary>
+
+$\sigma(2) = 0.8808$, so $\sigma'(2) = 0.8808\times0.1192 = 0.1050$. (a) $0.1050^6\approx1.3\times10^{-6}$. (b) $0.25^6\approx2.4\times10^{-4}$, about 180 times larger: partly saturated units are far worse than the bound suggests. (c) $w\,\sigma'(2) = 1$ needs $w\approx9.5$, and weights that large usually push the pre-activations even further into saturation.
+
+</details>
+
+8. A student writes a layer $\mathbf{Z} = \mathbf{X}\mathbf{W} + \mathbf{b}$ with 16 inputs and 16 outputs, and codes the weight gradient as $\boldsymbol\Delta^\top\mathbf{X}$ instead of $\mathbf{X}^\top\boldsymbol\Delta$. The code runs and every shape matches, but the network barely learns. Why did shape-matching not catch the bug, and what would?
+
+<details>
+<summary>Answer</summary>
+
+With $n_\text{in} = n_\text{out} = 16$ both products are $16\times16$, so their shapes cannot tell them apart. $\boldsymbol\Delta^\top\mathbf{X}$ is the transpose of the correct gradient: weight $(j, k)$ is updated with the gradient that belongs to weight $(k, j)$. A finite-difference gradient check ([derivatives and gradients](../../calculus-and-optimization/derivatives-and-gradients/)) compares values, not shapes, and would report a large relative error. So would a test with $n_\text{in}\ne n_\text{out}$.
 
 </details>
 

@@ -46,6 +46,17 @@ With $\sigma$ fixed, the second term is a constant and the first is the squared 
 
 The gradient is proportional to the error, signed: too high, push down; too low, push up. The derivation also tells you when MSE is a poor choice. Squaring makes large errors dominate, so a few outliers (a mis-entered lab value) can drag the fit. Assuming Laplace-distributed noise instead gives the **mean absolute error**, which is more robust to outliers.
 
+### A robust middle ground: the Huber loss
+
+Write $r = \hat y - y$ for one person's error and take the loss $\tfrac12r^2$, whose gradient with respect to the prediction is $r$ itself. An error of 20 then pulls on the model 20 times as hard as an error of 1: squared error gives an outlier unlimited influence. Absolute error $\lvert r\rvert$ has gradient $\pm1$, so everyone pulls equally hard, but it has a corner at $r = 0$ and its gradient does not shrink as the fit improves. The **Huber loss** takes the better half of each: quadratic for small errors, linear for large ones, switching at a threshold $\delta$.
+
+**Derivation.** Keep $\tfrac12r^2$ while $\lvert r\rvert\le\delta$. Beyond that, continue along a straight line that joins on with no jump and no corner. At $\lvert r\rvert = \delta$ the parabola has value $\tfrac12\delta^2$ and slope $\delta$, so the line is $\tfrac12\delta^2 + \delta(\lvert r\rvert - \delta) = \delta\bigl(\lvert r\rvert - \tfrac12\delta\bigr)$:
+
+> [!IMPORTANT]
+> $$H_\delta(r) = \begin{cases}\tfrac12r^2 & \lvert r\rvert\le\delta\\ \delta\bigl(\lvert r\rvert - \tfrac12\delta\bigr) & \lvert r\rvert > \delta\end{cases}\qquad\frac{\partial H_\delta}{\partial\hat y} = \begin{cases}r & \lvert r\rvert\le\delta\\ \delta\operatorname{sign}(r) & \lvert r\rvert > \delta\end{cases}$$
+
+The gradient is the error **clipped** to the range $[-\delta, \delta]$. Small errors are treated exactly as in MSE, and no single person can pull harder than $\delta$. With $\delta = 1$, errors of $0.3$ and $20$ cost $0.045$ and $19.5$ (against $0.045$ and $200$ for $\tfrac12r^2$) and pull with strength $0.3$ and $1$. Choose $\delta$ near the size of an ordinary error, in the units of $y$. In PyTorch it is `nn.HuberLoss(delta=...)`.
+
 ### Binary cross-entropy from a Bernoulli
 
 For a yes/no outcome, such as "has coronary artery disease", $y_i\in\{0, 1\}$. The model outputs a probability $p_i = P(y_i = 1\mid\mathbf{x}_i)$. A Bernoulli variable has
@@ -104,6 +115,20 @@ $$
 $$
 
 The same clean form as the binary case (which is the special case $K = 2$). The gradient pushes the true class's logit up by $1 - p_c$ and every other logit down by its probability.
+
+### Why log-loss rewards honest probabilities
+
+Take a group of people who look identical to the model, of whom a fraction $\pi$ are truly cases. The model must give them all the same probability $q$. Which $q$ makes the average log-loss smallest? A fraction $\pi$ of the group pays $-\log q$ and the rest pay $-\log(1 - q)$, so the expected loss and its derivative are
+
+$$
+E(q) = -\pi\log q - (1 - \pi)\log(1 - q),\qquad \frac{dE}{dq} = -\frac{\pi}{q} + \frac{1 - \pi}{1 - q} = \frac{q - \pi}{q(1 - q)}.
+$$
+
+The derivative is negative for $q < \pi$, zero at $q = \pi$ and positive for $q > \pi$. The only minimum is at $q = \pi$: the best thing the model can say is the truth. A loss with this property is called a **proper scoring rule**. For $\pi = 0.2$, the honest $q = 0.2$ costs $0.500$, the hedging $q = 0.5$ costs $0.693$, and the overconfident $q = 0.05$ costs $0.640$.
+
+Squared error on probabilities, the **Brier score** used in [model evaluation](../../classical-machine-learning/model-evaluation/), is proper too: $E(q) = \pi(1 - q)^2 + (1 - \pi)q^2$ has derivative $2(q - \pi)$. Absolute error is not. Its expected value $\pi(1 - q) + (1 - \pi)q$ is a straight line in $q$, lowest at $q = 0$ whenever $\pi < 0.5$, so it rewards rounding every risk to 0 or 1.
+
+This is why training with cross-entropy pushes a model towards **calibrated** probabilities, the property that the next section and every clinical use of a risk score depend on. [Information theory](../../probability-and-statistics/information-theory/) reaches the same conclusion through the KL divergence.
 
 ### Rare disease cases: class weighting
 
@@ -170,6 +195,10 @@ Being confidently wrong costs about 22 times as much as being confidently right.
 - Hard example, $p_t = 0.1$: BCE $2.3026$, focal $0.81\times2.3026 = 1.8651$.
 
 The hard-to-easy ratio rises from about 22 (BCE) to about 1,770 (focal).
+
+**6. Huber against an outlier.** In example 1, suppose person 3's LDL of 2.6 was mistyped as 26. Their error becomes $2.9 - 26 = -23.1$. With $\tfrac12r^2$ the three people pull on their predictions with strengths $0.3$, $-0.5$ and $-23.1$: the typo outweighs the other two together about 29 times. With Huber and $\delta = 1$ the pulls are $0.3$, $-0.5$ and $-1$, and the typo's loss is $1\times(23.1 - 0.5) = 22.6$ instead of $\tfrac12(23.1)^2\approx266.8$.
+
+**7. An honest forecast.** A group has true risk $\pi = 0.2$. Forecasting $q = 0.2$ gives expected log-loss $-0.2\log0.2 - 0.8\log0.8 = 0.3219 + 0.1785 = 0.5004$. Forecasting $q = 0.1$ gives $-0.2\log0.1 - 0.8\log0.9 = 0.4605 + 0.0843 = 0.5448$, which is worse. Under absolute error the same two forecasts score $0.2(0.8) + 0.8(0.2) = 0.32$ and $0.2(0.9) + 0.8(0.1) = 0.26$: the less honest forecast wins, and $q = 0$ would score better still ($0.2$).
 
 ## In code
 
@@ -288,6 +317,48 @@ Read this carefully, because it contains the main lesson:
 
 Weighting and focal loss matter more for flexible deep models trained on very imbalanced data, where they change *what* the model spends its capacity learning. Even then, check calibration.
 
+Last, robustness and honesty on small numbers. Part 1 finds the best constant prediction for seven LDL values, one of them mistyped, under three losses. Part 2 finds the forecast that minimises each expected loss for a group whose true risk is 0.2.
+
+```python
+import numpy as np
+
+# Part 1. Seven LDL values (mmol/L); the last should be 2.6 but was typed as 26.
+ldl = np.array([2.9, 3.1, 3.4, 3.6, 3.8, 4.0, 26.0])
+c = np.linspace(2, 8, 6001)[:, None]         # candidate constant predictions, 0.001 apart
+r = c - ldl                                  # errors, shape (6001, 7)
+delta = 1.0
+per_person = {
+    "squared": 0.5 * r**2,
+    "absolute": np.abs(r),
+    "Huber": np.where(np.abs(r) <= delta, 0.5 * r**2, delta * (np.abs(r) - 0.5 * delta)),
+}
+for name, loss in per_person.items():
+    best = c[loss.sum(axis=1).argmin(), 0]
+    print(f"{name:9s} loss: best constant prediction {best:.2f}")
+
+# Part 2. A group whose true risk is 0.2: which forecast q has the lowest expected loss?
+pi = 0.2
+q = np.linspace(0.001, 0.999, 999)
+expected = {
+    "log-loss": -(pi * np.log(q) + (1 - pi) * np.log(1 - q)),
+    "Brier": pi * (1 - q)**2 + (1 - pi) * q**2,
+    "absolute": pi * (1 - q) + (1 - pi) * q,
+}
+for name, e in expected.items():
+    print(f"{name:9s} minimised at q = {q[e.argmin()]:.3f}, expected loss {e.min():.4f}")
+```
+
+```text
+squared   loss: best constant prediction 6.69
+absolute  loss: best constant prediction 3.60
+Huber     loss: best constant prediction 3.63
+log-loss  minimised at q = 0.200, expected loss 0.5004
+Brier     minimised at q = 0.200, expected loss 0.1600
+absolute  minimised at q = 0.001, expected loss 0.2006
+```
+
+One mistyped value drags the squared-error answer (the mean) to 6.69 mmol/L, above every genuine measurement. Absolute error gives the median, 3.60, and Huber gives 3.63, close to the mean of the six genuine values (3.47). In part 2, log-loss and the Brier score are both minimised at the true risk, while absolute error is minimised at the edge of the grid, as near to 0 as it is allowed to go.
+
 ## Biomedical connection
 
 The losses in this chapter map directly onto the prediction targets in a heart-disease project:
@@ -351,6 +422,37 @@ $\dfrac{e^{z_k + m}}{\sum_j e^{z_j + m}} = \dfrac{e^m e^{z_k}}{e^m\sum_j e^{z_j}
 <summary>Answer</summary>
 
 $w_+ = 9600/400 = 24$. Unweighted: $-\log0.2 = 1.609$. Weighted: $24\times1.609 = 38.63$.
+
+</details>
+
+6. With $\delta = 1.5$, compute the Huber loss and its gradient with respect to the prediction for errors $r = 0.6$, $r = -1.5$ and $r = 4$. Compare the last with $\tfrac12r^2$.
+
+<details>
+<summary>Answer</summary>
+
+$r = 0.6$: quadratic zone, loss $\tfrac12(0.36) = 0.18$, gradient $0.6$.
+$r = -1.5$: on the boundary, where the two pieces agree: $\tfrac12(2.25) = 1.125 = 1.5(1.5 - 0.75)$, gradient $-1.5$.
+$r = 4$: linear zone, loss $1.5(4 - 0.75) = 4.875$, gradient $1.5$. Squared error would give loss $8$ and gradient $4$.
+
+</details>
+
+7. A model is trained with class-weighted BCE, with weight $w_+$ on cases. For a group with true risk $\pi$, show that the expected loss is minimised at $q = \dfrac{w_+\pi}{w_+\pi + 1 - \pi}$, not at $\pi$. Evaluate $q$ for the dataset of problem 5 ($w_+ = 24$) when $\pi = 0.04$ (the prevalence) and when $\pi = 0.2$. What goes wrong if these outputs are reported as risks?
+
+<details>
+<summary>Answer</summary>
+
+$E(q) = -w_+\pi\log q - (1 - \pi)\log(1 - q)$. Setting $\dfrac{dE}{dq} = -\dfrac{w_+\pi}{q} + \dfrac{1 - \pi}{1 - q} = 0$ gives $w_+\pi(1 - q) = (1 - \pi)q$, so $q = \dfrac{w_+\pi}{w_+\pi + 1 - \pi}$. Equivalently the odds are multiplied by $w_+$.
+$\pi = 0.04$: $q = 0.96/(0.96 + 0.96) = 0.5$. $\pi = 0.2$: $q = 4.8/(4.8 + 0.8) = 0.857$.
+A person of average risk is told 50%, and a person at 20% risk is told 86%. The ranking of people is unchanged, but the numbers are no longer risks. Divide the odds by $w_+$, or recalibrate, before reporting them.
+
+</details>
+
+8. Differentiate $\partial L/\partial z = p - y$ once more to find the curvature of binary cross-entropy in the logit. Evaluate it at $p = 0.5$, $0.9$ and $0.99$. What does its sign tell you, and where is the loss nearly flat?
+
+<details>
+<summary>Answer</summary>
+
+$y$ is a constant, so $\dfrac{\partial^2L}{\partial z^2} = \dfrac{\partial p}{\partial z} = p(1 - p)$: $0.25$, $0.09$ and $0.0099$. It is positive for every $z$ and either label, so the loss is a bowl in the logit, with no false minima. It is nearly flat wherever the model is confident, rightly or wrongly. This $p(1 - p)$ is the weight in Newton's method for [logistic regression](../../classical-machine-learning/linear-and-logistic-regression/) and the second-order term in [gradient boosting](../../classical-machine-learning/trees-forests-and-boosting/).
 
 </details>
 
